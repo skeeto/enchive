@@ -4,9 +4,30 @@ D. J. Bernstein
 Public domain.
 */
 
-#include "ecrypt-sync.h"
+#include "chacha.h"
 
-#define ROTATE(v,c) (ROTL32(v,c))
+#define U8C(v) (v##U)
+#define U16C(v) (v##U)
+#define U32C(v) (v##UL)
+#define U8V(v)  ((u8)(v)  & U8C(0xFF))
+#define U16V(v) ((u16)(v) & U16C(0xFFFF))
+#define U32V(v) ((u32)(v) & U32C(0xFFFFFFFF))
+
+#define U8TO32_LITTLE(p) \
+  (((u32)((p)[0])      ) | \
+   ((u32)((p)[1]) <<  8) | \
+   ((u32)((p)[2]) << 16) | \
+   ((u32)((p)[3]) << 24))
+
+#define U32TO8_LITTLE(p, v) \
+  do { \
+    (p)[0] = U8V((v)      ); \
+    (p)[1] = U8V((v) >>  8); \
+    (p)[2] = U8V((v) >> 16); \
+    (p)[3] = U8V((v) >> 24); \
+  } while (0)
+
+#define ROTATE(v,c) (U32V((v) << (c)) | ((v) >> (32 - (c))))
 #define XOR(v,w) ((v) ^ (w))
 #define PLUS(v,w) (U32V((v) + (w)))
 #define PLUSONE(v) (PLUS((v),1))
@@ -37,7 +58,7 @@ static void salsa20_wordtobyte(u8 output[64],const u32 input[16])
   for (i = 0;i < 16;++i) U32TO8_LITTLE(output + 4 * i,x[i]);
 }
 
-void ECRYPT_init(void)
+void chacha_init(void)
 {
   return;
 }
@@ -45,7 +66,7 @@ void ECRYPT_init(void)
 static const char sigma[16] = "expand 32-byte k";
 static const char tau[16] = "expand 16-byte k";
 
-void ECRYPT_keysetup(ECRYPT_ctx *x,const u8 *k,u32 kbits,u32 ivbits)
+void chacha_keysetup(chacha_ctx *x,const u8 *k,u32 kbits)
 {
   const char *constants;
 
@@ -69,7 +90,7 @@ void ECRYPT_keysetup(ECRYPT_ctx *x,const u8 *k,u32 kbits,u32 ivbits)
   x->input[3] = U8TO32_LITTLE(constants + 12);
 }
 
-void ECRYPT_ivsetup(ECRYPT_ctx *x,const u8 *iv)
+void chacha_ivsetup(chacha_ctx *x,const u8 *iv)
 {
   x->input[12] = 0;
   x->input[13] = 0;
@@ -77,10 +98,10 @@ void ECRYPT_ivsetup(ECRYPT_ctx *x,const u8 *iv)
   x->input[15] = U8TO32_LITTLE(iv + 4);
 }
 
-void ECRYPT_encrypt_bytes(ECRYPT_ctx *x,const u8 *m,u8 *c,u32 bytes)
+void chacha_encrypt_bytes(chacha_ctx *x,const u8 *m,u8 *c,u32 bytes)
 {
   u8 output[64];
-  int i;
+  u32 i;
 
   if (!bytes) return;
   for (;;) {
@@ -101,14 +122,14 @@ void ECRYPT_encrypt_bytes(ECRYPT_ctx *x,const u8 *m,u8 *c,u32 bytes)
   }
 }
 
-void ECRYPT_decrypt_bytes(ECRYPT_ctx *x,const u8 *c,u8 *m,u32 bytes)
+void chacha_decrypt_bytes(chacha_ctx *x,const u8 *c,u8 *m,u32 bytes)
 {
-  ECRYPT_encrypt_bytes(x,c,m,bytes);
+  chacha_encrypt_bytes(x,c,m,bytes);
 }
 
-void ECRYPT_keystream_bytes(ECRYPT_ctx *x,u8 *stream,u32 bytes)
+void chacha_keystream_bytes(chacha_ctx *x,u8 *stream,u32 bytes)
 {
   u32 i;
   for (i = 0;i < bytes;++i) stream[i] = 0;
-  ECRYPT_encrypt_bytes(x,stream,stream,bytes);
+  chacha_encrypt_bytes(x,stream,stream,bytes);
 }
