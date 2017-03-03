@@ -32,3 +32,7 @@ To extract the file later on a machine with `.encrypt.sec`:
     $ enchive extract <file.enchive>
 
 This will reproduce `file`.
+
+## Notes
+
+There's no effort at error recovery. It bails out on the first error.
