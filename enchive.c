@@ -11,14 +11,39 @@
 
 int curve25519_donna(u8 *p, const u8 *s, const u8 *b);
 
+static struct {
+    char *name;
+    FILE *file;
+} cleanup[2];
+
+static void
+cleanup_register(FILE *file, char *name)
+{
+    if (file) {
+        unsigned i;
+        for (i = 0; i < sizeof(cleanup) / sizeof(*cleanup); i++) {
+            cleanup[i].name = name;
+            cleanup[i].file = file;
+            return;
+        }
+    }
+    abort();
+}
+
 static void
 fatal(const char *fmt, ...)
 {
+    unsigned i;
     va_list ap;
     va_start(ap, fmt);
     fprintf(stderr, "enchive: ");
     vfprintf(stderr, fmt, ap);
     fputc('\n', stderr);
+    for (i = 0; i < sizeof(cleanup) / sizeof(*cleanup); i++) {
+        if (cleanup[i].file)
+            fclose(cleanup[i].file);
+        remove(cleanup[i].name);
+    }
     exit(EXIT_FAILURE);
 }
 
@@ -185,7 +210,7 @@ default_secfile(void)
 }
 
 static void
-load_key(const char *file, u8 *key)
+load_key(char *file, u8 *key)
 {
     FILE *f = fopen(file, "rb");
     if (!f)
@@ -196,7 +221,7 @@ load_key(const char *file, u8 *key)
 }
 
 static void
-write_key(const char *file, const u8 *key, int clobber)
+write_key(char *file, const u8 *key, int clobber)
 {
     FILE *f;
 
@@ -205,9 +230,11 @@ write_key(const char *file, const u8 *key, int clobber)
     f = fopen(file, "wb");
     if (!f)
         fatal("failed to open key file for writing -- %s", file);
+    cleanup_register(f, file);
     if (!fwrite(key, 32, 1, f))
         fatal("failed to write key file -- %s", file);
-    fclose(f);
+    if (fclose(f))
+        fatal("failed to flush key file -- %s", file);
 }
 
 enum command {
@@ -326,6 +353,7 @@ command_archive(struct optparse *options)
         out = fopen(outfile, "wb");
         if (!out)
             fatal("could not open output file -- %s", infile);
+        cleanup_register(out, outfile);
     }
 
     /* Generare ephemeral keypair. */
@@ -392,6 +420,7 @@ command_extract(struct optparse *options)
         out = fopen(outfile, "wb");
         if (!out)
             fatal("could not open output file -- %s", infile);
+        cleanup_register(out, outfile);
     }
 
     if (!(fread(iv, sizeof(iv), 1, in)))
