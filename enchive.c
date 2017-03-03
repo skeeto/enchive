@@ -1,3 +1,4 @@
+#define _POSIX_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -46,6 +47,27 @@ fatal(const char *fmt, ...)
     }
     exit(EXIT_FAILURE);
 }
+
+#if defined(__unix__) || defined(__APPLE__)
+#include <fcntl.h>
+
+static FILE *
+secure_creat(char *file)
+{
+    int fd = open(file, O_CREAT | O_WRONLY, 00600);
+    if (fd == -1)
+        return 0;
+    return fdopen(fd, "wb");
+}
+#else
+
+/* fallback to standard open */
+static FILE *
+secure_creat(char *file)
+{
+    return fopen(file, "wb");
+}
+#endif
 
 /* Global options. */
 static char *global_random_device = "/dev/urandom";
@@ -227,7 +249,7 @@ write_key(char *file, const u8 *key, int clobber)
 
     if (!clobber && fopen(file, "r"))
         fatal("operation would clobber %s", file);
-    f = fopen(file, "wb");
+    f = secure_creat(file);
     if (!f)
         fatal("failed to open key file for writing -- %s", file);
     cleanup_register(f, file);
