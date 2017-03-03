@@ -22,16 +22,16 @@ files. It's sufficient to encrypt files, but not to decrypt them.
 
 To archive a file for storage:
 
-    $ enchive archive <file>
+    $ enchive archive file.tar.gz
 
-This will encrypt `file` as `file.enchive` (leaving the original in
-place). You can safely archive this wherever.
+This will encrypt `file.tar.gz` as `file.tar.gz.enchive` (leaving the
+original in place). You can safely archive this wherever.
 
 To extract the file later on a machine with `.encrypt.sec`:
 
-    $ enchive extract <file.enchive>
+    $ enchive extract file.tar.gz.enchive
 
-This will reproduce `file`.
+This will reproduce `file.tar.gz`.
 
 ## Notes
 
