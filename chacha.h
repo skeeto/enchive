@@ -3,6 +3,8 @@
 
 #include "machine.h"
 
+#define CHACHA_BLOCKLENGTH 64
+
 typedef struct {
     u32 input[16];
 } chacha_ctx;

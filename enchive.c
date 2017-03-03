@@ -9,8 +9,6 @@
 #include "chacha.h"
 #include "optparse.h"
 
-#define BUFSIZE (16 * 4096)
-
 int curve25519_donna(u8 *p, const u8 *s, const u8 *b);
 
 static void
@@ -65,7 +63,7 @@ compute_shared(u8 *sh, const u8 *s, const u8 *p)
 static void
 symmetric_encrypt(FILE *in, FILE *out, u8 *key, u8 *iv)
 {
-    static u8 buffer[2][BUFSIZE];
+    static u8 buffer[2][CHACHA_BLOCKLENGTH * 1024];
     u8 sha256[SHA256_BLOCK_SIZE];
     SHA256_CTX hash[1];
     chacha_ctx ctx[1];
@@ -84,6 +82,8 @@ symmetric_encrypt(FILE *in, FILE *out, u8 *key, u8 *iv)
         chacha_encrypt_bytes(ctx, buffer[0], buffer[1], z);
         if (!fwrite(buffer[1], z, 1, out))
             fatal("error writing ciphertext file");
+        if (z < sizeof(buffer[0]))
+            break;
     }
 
     sha256_final(hash, sha256);
@@ -96,7 +96,7 @@ symmetric_encrypt(FILE *in, FILE *out, u8 *key, u8 *iv)
 static void
 symmetric_decrypt(FILE *in, FILE *out, u8 *key, u8 *iv)
 {
-    static u8 buffer[2][BUFSIZE];
+    static u8 buffer[2][CHACHA_BLOCKLENGTH * 1024 + SHA224_BLOCK_SIZE];
     u8 sha256[SHA256_BLOCK_SIZE];
     SHA256_CTX hash[1];
     chacha_ctx ctx[1];
@@ -111,6 +111,7 @@ symmetric_decrypt(FILE *in, FILE *out, u8 *key, u8 *iv)
         else
             fatal("ciphertext file too short");
     }
+
     for (;;) {
         u8 *p = buffer[0] + SHA224_BLOCK_SIZE;
         size_t z = fread(p, 1, sizeof(buffer[0]) - SHA224_BLOCK_SIZE, in);
@@ -122,17 +123,21 @@ symmetric_decrypt(FILE *in, FILE *out, u8 *key, u8 *iv)
         chacha_encrypt_bytes(ctx, buffer[0], buffer[1], z);
         sha256_update(hash, buffer[1], z);
         if (!fwrite(buffer[1], z, 1, out))
-            fatal("error writing destination file");
+            fatal("error writing plaintext file");
 
         /* Move last SHA224_BLOCK_SIZE bytes to the front. */
         memmove(buffer[0], buffer[0] + z, SHA224_BLOCK_SIZE);
+
+        if (z < sizeof(buffer[0]) - SHA224_BLOCK_SIZE)
+            break;
     }
-    if (fflush(out))
-        fatal("error flushing to destination");
 
     sha256_final(hash, sha256);
     if (memcmp(buffer[0], sha256, SHA224_BLOCK_SIZE) != 0)
         fatal("checksum mismatch!");
+    if (fflush(out))
+        fatal("error flushing to plaintext file");
+
 }
 
 static void
