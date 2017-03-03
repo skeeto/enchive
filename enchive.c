@@ -64,13 +64,12 @@ static void
 symmetric_encrypt(FILE *in, FILE *out, u8 *key, u8 *iv)
 {
     static u8 buffer[2][CHACHA_BLOCKLENGTH * 1024];
-    u8 sha256[SHA256_BLOCK_SIZE];
+    u8 msghash[SHA256_BLOCK_SIZE];
     SHA256_CTX hash[1];
     chacha_ctx ctx[1];
     chacha_keysetup(ctx, key, 256);
     chacha_ivsetup(ctx, iv);
     sha256_init(hash);
-    sha256_update(hash, iv, 8);
 
     for (;;) {
         size_t z = fread(buffer[0], 1, sizeof(buffer[0]), in);
@@ -87,8 +86,13 @@ symmetric_encrypt(FILE *in, FILE *out, u8 *key, u8 *iv)
             break;
     }
 
-    sha256_final(hash, sha256);
-    if (!fwrite(sha256, SHA224_BLOCK_SIZE, 1, out))
+    sha256_final(hash, msghash);
+    sha256_init(hash);
+    sha256_update(hash, key, 32);
+    sha256_update(hash, msghash, sizeof(msghash));
+    sha256_final(hash, msghash);
+
+    if (!fwrite(msghash, SHA256_BLOCK_SIZE, 1, out))
         fatal("error writing checksum to ciphertext file");
     if (fflush(out))
         fatal("error flushing to ciphertext file");
@@ -97,17 +101,16 @@ symmetric_encrypt(FILE *in, FILE *out, u8 *key, u8 *iv)
 static void
 symmetric_decrypt(FILE *in, FILE *out, u8 *key, u8 *iv)
 {
-    static u8 buffer[2][CHACHA_BLOCKLENGTH * 1024 + SHA224_BLOCK_SIZE];
-    u8 sha256[SHA256_BLOCK_SIZE];
+    static u8 buffer[2][CHACHA_BLOCKLENGTH * 1024 + SHA256_BLOCK_SIZE];
+    u8 msghash[SHA256_BLOCK_SIZE];
     SHA256_CTX hash[1];
     chacha_ctx ctx[1];
     chacha_keysetup(ctx, key, 256);
     chacha_ivsetup(ctx, iv);
     sha256_init(hash);
-    sha256_update(hash, iv, 8);
 
     /* Always keep SHA224_BLOCK_SIZE bytes in the buffer. */
-    if (!(fread(buffer[0], SHA224_BLOCK_SIZE, 1, in))) {
+    if (!(fread(buffer[0], SHA256_BLOCK_SIZE, 1, in))) {
         if (ferror(in))
             fatal("cannot read ciphertext file");
         else
@@ -115,8 +118,8 @@ symmetric_decrypt(FILE *in, FILE *out, u8 *key, u8 *iv)
     }
 
     for (;;) {
-        u8 *p = buffer[0] + SHA224_BLOCK_SIZE;
-        size_t z = fread(p, 1, sizeof(buffer[0]) - SHA224_BLOCK_SIZE, in);
+        u8 *p = buffer[0] + SHA256_BLOCK_SIZE;
+        size_t z = fread(p, 1, sizeof(buffer[0]) - SHA256_BLOCK_SIZE, in);
         if (!z) {
             if (ferror(in))
                 fatal("error reading ciphertext file");
@@ -128,14 +131,19 @@ symmetric_decrypt(FILE *in, FILE *out, u8 *key, u8 *iv)
             fatal("error writing plaintext file");
 
         /* Move last SHA224_BLOCK_SIZE bytes to the front. */
-        memmove(buffer[0], buffer[0] + z, SHA224_BLOCK_SIZE);
+        memmove(buffer[0], buffer[0] + z, SHA256_BLOCK_SIZE);
 
-        if (z < sizeof(buffer[0]) - SHA224_BLOCK_SIZE)
+        if (z < sizeof(buffer[0]) - SHA256_BLOCK_SIZE)
             break;
     }
 
-    sha256_final(hash, sha256);
-    if (memcmp(buffer[0], sha256, SHA224_BLOCK_SIZE) != 0)
+    sha256_final(hash, msghash);
+    sha256_init(hash);
+    sha256_update(hash, key, 32);
+    sha256_update(hash, msghash, sizeof(msghash));
+    sha256_final(hash, msghash);
+
+    if (memcmp(buffer[0], msghash, SHA256_BLOCK_SIZE) != 0)
         fatal("checksum mismatch!");
     if (fflush(out))
         fatal("error flushing to plaintext file");

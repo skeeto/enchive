@@ -49,7 +49,7 @@ The process for encrypting a file:
 4. Write the 8-byte IV.
 5. Write the 32-byte ephemeral public key.
 6. Encrypt the file with ChaCha20 and write the ciphertext.
-7. Write the SHA-224 hash of IV+plaintext.
+7. Write `sha256(key + sha256(plaintext))`.
 
 The process for decrypting a file:
 
@@ -59,4 +59,4 @@ The process for decrypting a file:
    public key.
 4. Initialize ChaCha20 with the shared secret as the key.
 5. Decrypt the ciphertext using ChaCha20.
-6. Verify the SHA-224 hash of IV+plaintext at the end of the file.
+6. Verify `sha256(key + sha256(plaintext))`.

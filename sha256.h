@@ -12,7 +12,6 @@
 #include <stddef.h>
 #include "machine.h"
 
-#define SHA224_BLOCK_SIZE 28
 #define SHA256_BLOCK_SIZE 32
 
 typedef unsigned char BYTE;
