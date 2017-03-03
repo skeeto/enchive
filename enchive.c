@@ -272,6 +272,10 @@ command_archive(struct optparse *options)
         {0}
     };
 
+    char *infile;
+    char *outfile;
+    FILE *in = stdin;
+    FILE *out = stdout;
     char *pubfile = global_pubkey;
     u8 public[32];
     u8 esecret[32];
@@ -291,17 +295,40 @@ command_archive(struct optparse *options)
         pubfile = default_pubfile();
     load_key(pubfile, public);
 
+    infile = optparse_arg(options);
+    if (infile) {
+        in = fopen(infile, "rb");
+        if (!in)
+            fatal("could not open input file -- %s", infile);
+    }
+
+    outfile = optparse_arg(options);
+    if (!outfile && infile) {
+        static const char suffix[] = ".enchive";
+        size_t len = strlen(infile);
+        outfile = malloc(len + sizeof(suffix));
+        if (!outfile)
+            fatal("out of memory");
+        memcpy(outfile, infile, len);
+        memcpy(outfile + len, suffix, sizeof(suffix));
+    }
+    if (outfile) {
+        out = fopen(outfile, "wb");
+        if (!out)
+            fatal("could not open output file -- %s", infile);
+    }
+
     /* Generare ephemeral keypair. */
     generate_secret(esecret);
     compute_public(epublic, esecret);
 
     compute_shared(shared, esecret, public);
     secure_entropy(iv, sizeof(iv));
-    if (!fwrite(iv, sizeof(iv), 1, stdout))
+    if (!fwrite(iv, sizeof(iv), 1, out))
         fatal("failed to write IV to archive");
-    if (!fwrite(epublic, sizeof(epublic), 1, stdout))
+    if (!fwrite(epublic, sizeof(epublic), 1, out))
         fatal("failed to write ephemeral key to archive");
-    symmetric_encrypt(stdin, stdout, shared, iv);
+    symmetric_encrypt(in, out, shared, iv);
 }
 
 static void
@@ -311,6 +338,10 @@ command_extract(struct optparse *options)
         {0}
     };
 
+    char *infile;
+    char *outfile;
+    FILE *in = stdin;
+    FILE *out = stdin;
     char *secfile = global_seckey;
     u8 secret[32];
     u8 epublic[32];
@@ -327,12 +358,38 @@ command_extract(struct optparse *options)
         secfile = default_secfile();
     load_key(secfile, secret);
 
-    if (!(fread(iv, sizeof(iv), 1, stdin)))
+    infile = optparse_arg(options);
+    if (infile) {
+        in = fopen(infile, "rb");
+        if (!in)
+            fatal("could not open input file -- %s", infile);
+    }
+
+    outfile = optparse_arg(options);
+    if (!outfile && infile) {
+        static const char suffix[] = ".enchive";
+        size_t slen = sizeof(suffix) - 1;
+        size_t len = strlen(infile);
+        if (len <= slen || strcmp(suffix, infile + len - slen) != 0)
+            fatal("could not determine output filename from %s", infile);
+        outfile = malloc(len - slen);
+        if (!outfile)
+            fatal("out of memory");
+        memcpy(outfile, infile, len - slen);
+        outfile[len - slen] = 0;
+    }
+    if (outfile) {
+        out = fopen(outfile, "wb");
+        if (!out)
+            fatal("could not open output file -- %s", infile);
+    }
+
+    if (!(fread(iv, sizeof(iv), 1, in)))
         fatal("failed to read IV from archive");
-    if (!(fread(epublic, sizeof(epublic), 1, stdin)))
+    if (!(fread(epublic, sizeof(epublic), 1, in)))
         fatal("failed to read ephemeral key from archive");
     compute_shared(shared, secret, epublic);
-    symmetric_decrypt(stdin, stdout, shared, iv);
+    symmetric_decrypt(in, out, shared, iv);
 }
 
 static void
