@@ -36,3 +36,27 @@ This will reproduce `file.tar.gz`.
 ## Notes
 
 There's no effort at error recovery. It bails out on the first error.
+
+## Format
+
+The process for encrypting a file:
+
+1. Generate an ephemeral 256-bit Curve25519 key pair.
+2. Perform a Curve25519 Diffie-Hellman key exchange with the master
+   key to produce a shared secret.
+3. Generate a 64-bit IV for ChaCha20.
+5. Initialize ChaCha20 with the shared secret as the key.
+4. Write the 8-byte IV.
+5. Write the 32-byte ephemeral public key.
+6. Encrypt the file with ChaCha20 and write the ciphertext.
+7. Write the SHA-224 hash of IV+plaintext.
+
+The process for decrypting a file:
+
+1. Read the 8-byte ChaCha20 IV.
+2. Read the 32-byte ephemeral public key
+3. Perform a Curve25519 Diffie-Hellman key exchange with the ephemeral
+   public key.
+4. Initialize ChaCha20 with the shared secret as the key.
+5. Decrypt the ciphertext using ChaCha20.
+6. Verify the SHA-224 hash of IV+plaintext at the end of the file.
