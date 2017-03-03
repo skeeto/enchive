@@ -70,6 +70,7 @@ symmetric_encrypt(FILE *in, FILE *out, u8 *key, u8 *iv)
     chacha_keysetup(ctx, key, 256);
     chacha_ivsetup(ctx, iv);
     sha256_init(hash);
+    sha256_update(hash, iv, 8);
 
     for (;;) {
         size_t z = fread(buffer[0], 1, sizeof(buffer[0]), in);
@@ -103,6 +104,7 @@ symmetric_decrypt(FILE *in, FILE *out, u8 *key, u8 *iv)
     chacha_keysetup(ctx, key, 256);
     chacha_ivsetup(ctx, iv);
     sha256_init(hash);
+    sha256_update(hash, iv, 8);
 
     /* Always keep SHA224_BLOCK_SIZE bytes in the buffer. */
     if (!(fread(buffer[0], SHA224_BLOCK_SIZE, 1, in))) {
