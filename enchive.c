@@ -127,16 +127,17 @@ get_passphrase(char *buf, size_t len, char *prompt)
 }
 #endif
 
-#define KEY_DERIVE_ITERATIONS 0x400000ul
+#define KEY_DERIVE_ITERATIONS    0x00400000ul
+#define SECKEY_DERIVE_ITERATIONS 0x01000000ul
 
 static void
-key_derive(char *key, u8 *buf)
+key_derive(char *key, u8 *buf, unsigned long iterations)
 {
     unsigned long i;
     SHA256_CTX ctx[1];
     sha256_init(ctx);
     sha256_final(ctx, buf);
-    for (i = 0; i < KEY_DERIVE_ITERATIONS; i++) {
+    for (i = 0; i < iterations; i++) {
         sha256_init(ctx);
         sha256_update(ctx, (void *)key, strlen(key));
         sha256_update(ctx, buf, sizeof(buf));
@@ -330,12 +331,12 @@ write_seckey(char *file, u8 *seckey, int encrypt)
         get_passphrase(pass[1], sizeof(pass[0]),
                        "passphrase (repeat): ");
         if (strcmp(pass[0], pass[1]) != 0)
-            fatal("passphrase don't match");
+            fatal("passphrases don't match");
         if (!pass[0][0]) {
 
             encrypt = 0;
         }  else {
-            key_derive(pass[0], key);
+            key_derive(pass[0], key, KEY_DERIVE_ITERATIONS);
 
             sha256_init(sha);
             sha256_update(sha, key, 32);
@@ -395,7 +396,7 @@ load_seckey(char *file, u8 *seckey)
     if (memcmp(buf, empty, sizeof(empty)) != 0) {
         char pass[256];
         get_passphrase(pass, sizeof(pass), "passphrase: ");
-        key_derive(pass, key);
+        key_derive(pass, key, KEY_DERIVE_ITERATIONS);
 
         sha256_init(sha);
         sha256_update(sha, key, 32);
@@ -445,8 +446,9 @@ static void
 command_keygen(struct optparse *options)
 {
     static const struct optparse_long keygen[] = {
-        {"force", 'f', OPTPARSE_NONE},
-        {"plain", 'u', OPTPARSE_NONE},
+        {"derive", 'd', OPTPARSE_NONE},
+        {"force",  'f', OPTPARSE_NONE},
+        {"plain",  'u', OPTPARSE_NONE},
         {0}
     };
 
@@ -456,10 +458,14 @@ command_keygen(struct optparse *options)
     u8 secret[32];
     int clobber = 0;
     int encrypt = 1;
+    int derive = 0;
 
     int option;
     while ((option = optparse_long(options, keygen, 0)) != -1) {
         switch (option) {
+            case 'd':
+                derive = 1;
+                break;
             case 'f':
                 clobber = 1;
                 break;
@@ -480,7 +486,20 @@ command_keygen(struct optparse *options)
     if (!clobber && fopen(secfile, "r"))
         fatal("operation would clobber %s", secfile);
 
-    generate_secret(secret);
+    /* Generate secret key. */
+    if (derive) {
+        char pass[2][256];
+        get_passphrase(pass[0], sizeof(pass[0]),
+                       "secret key passphrase: ");
+        get_passphrase(pass[1], sizeof(pass[0]),
+                       "secret key passphrase (repeat): ");
+        if (strcmp(pass[0], pass[1]) != 0)
+            fatal("passphrases don't match");
+        key_derive(pass[0], secret, SECKEY_DERIVE_ITERATIONS);
+    } else {
+        generate_secret(secret);
+    }
+
     compute_public(public, secret);
     write_pubkey(pubfile, public);
     write_seckey(secfile, secret, encrypt);

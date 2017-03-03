@@ -21,6 +21,7 @@ static const char docs_keygen[] =
 "\n"
 "  --force, -f        overwrite any existing keys (default: no clobber)\n"
 "  --plain, -u        don't encrypt the secret key\n"
+"  --derive, -d       derive secret key from a passphrase\n"
 "\n"
 "The global --pubkey and --seckey options select the filenames.\n";
 
