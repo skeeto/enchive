@@ -573,6 +573,8 @@ command_extract(struct optparse *options)
     int option;
     while ((option = optparse_long(options, extract, 0)) != -1) {
         switch (option) {
+            default:
+                fatal("%s", options->errmsg);
         }
     }
 
