@@ -46,11 +46,7 @@
  * from the sample implementation. */
 
 #include <string.h>
-#include <stdint.h>
-
-typedef uint8_t u8;
-typedef int32_t s32;
-typedef int64_t limb;
+#include "machine.h"
 
 /* Field element representation:
  *

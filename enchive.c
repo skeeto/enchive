@@ -7,6 +7,8 @@
 #include "optparse.h"
 #include "chacha.h"
 
+int curve25519_donna(u8 *p, const u8 *s, const u8 *b);
+
 static void
 fatal(const char *fmt, ...)
 {
@@ -17,10 +19,6 @@ fatal(const char *fmt, ...)
     fputc('\n', stderr);
     exit(EXIT_FAILURE);
 }
-
-int curve25519_donna(unsigned char *p,
-                     const unsigned char *s,
-                     const unsigned char *b);
 
 static void
 secure_entropy(void *buf, size_t len)
@@ -34,7 +32,7 @@ secure_entropy(void *buf, size_t len)
 }
 
 static void
-generate_secret(unsigned char *s)
+generate_secret(u8 *s)
 {
     secure_entropy(s, 32);
     s[0] &= 248;
@@ -43,16 +41,14 @@ generate_secret(unsigned char *s)
 }
 
 static void
-compute_public(unsigned char *p, const unsigned char *s)
+compute_public(u8 *p, const u8 *s)
 {
-    static const unsigned char b[32] = {9};
+    static const u8 b[32] = {9};
     curve25519_donna(p, s, b);
 }
 
 static void
-compute_shared(unsigned char *sh,
-               const unsigned char *s,
-               const unsigned char *p)
+compute_shared(u8 *sh, const u8 *s, const u8 *p)
 {
     curve25519_donna(sh, s, p);
 }
@@ -91,7 +87,7 @@ default_secfile(void)
 }
 
 static void
-load_key(const char *file, unsigned char *key)
+load_key(const char *file, u8 *key)
 {
     FILE *f = fopen(file, "rb");
     if (!f)
@@ -102,7 +98,7 @@ load_key(const char *file, unsigned char *key)
 }
 
 static void
-write_key(const char *file, const unsigned char *key)
+write_key(const char *file, const u8 *key)
 {
     FILE *f = fopen(file, "wb");
     if (!f)
@@ -121,8 +117,8 @@ command_keygen(struct optparse *options)
 
     const char *pubfile = default_pubfile();
     const char *secfile = default_secfile();
-    unsigned char public[32];
-    unsigned char secret[32];
+    u8 public[32];
+    u8 secret[32];
 
     int option;
     while ((option = optparse_long(options, keygen, 0)) != -1) {
@@ -144,11 +140,11 @@ command_archive(struct optparse *options)
     };
 
     const char *pubfile = default_pubfile();
-    unsigned char public[32];
-    unsigned char esecret[32];
-    unsigned char epublic[32];
-    unsigned char shared[32];
-    unsigned char iv[8];
+    u8 public[32];
+    u8 esecret[32];
+    u8 epublic[32];
+    u8 shared[32];
+    u8 iv[8];
 
     int option;
     while ((option = optparse_long(options, archive, 0)) != -1) {
@@ -179,10 +175,10 @@ command_extract(struct optparse *options)
     };
 
     const char *secfile = default_secfile();
-    unsigned char secret[32];
-    unsigned char epublic[32];
-    unsigned char shared[32];
-    unsigned char iv[8];
+    u8 secret[32];
+    u8 epublic[32];
+    u8 shared[32];
+    u8 iv[8];
 
     int option;
     while ((option = optparse_long(options, extract, 0)) != -1) {

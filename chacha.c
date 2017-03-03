@@ -6,9 +6,6 @@ Public domain.
 
 #include "chacha.h"
 
-#define U8C(v) (v##U)
-#define U16C(v) (v##U)
-#define U32C(v) (v##UL)
 #define U8V(v)  ((u8)(v)  & U8C(0xFF))
 #define U16V(v) ((u16)(v) & U16C(0xFFFF))
 #define U32V(v) ((u32)(v) & U32C(0xFFFFFFFF))
@@ -56,11 +53,6 @@ static void salsa20_wordtobyte(u8 output[64],const u32 input[16])
   }
   for (i = 0;i < 16;++i) x[i] = PLUS(x[i],input[i]);
   for (i = 0;i < 16;++i) U32TO8_LITTLE(output + 4 * i,x[i]);
-}
-
-void chacha_init(void)
-{
-  return;
 }
 
 static const char sigma[16] = "expand 32-byte k";
@@ -120,16 +112,4 @@ void chacha_encrypt_bytes(chacha_ctx *x,const u8 *m,u8 *c,u32 bytes)
     c += 64;
     m += 64;
   }
-}
-
-void chacha_decrypt_bytes(chacha_ctx *x,const u8 *c,u8 *m,u32 bytes)
-{
-  chacha_encrypt_bytes(x,c,m,bytes);
-}
-
-void chacha_keystream_bytes(chacha_ctx *x,u8 *stream,u32 bytes)
-{
-  u32 i;
-  for (i = 0;i < bytes;++i) stream[i] = 0;
-  chacha_encrypt_bytes(x,stream,stream,bytes);
 }
