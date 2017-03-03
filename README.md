@@ -1,4 +1,4 @@
-# Enchive : Encrypted personal archives
+# Enchive : encrypted personal archives
 
 Enchive is a tool encrypts files to yourself for long-term archival.
 It's intended as a focused, simple alternative to more complex
