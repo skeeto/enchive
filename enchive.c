@@ -341,7 +341,7 @@ command_extract(struct optparse *options)
     char *infile;
     char *outfile;
     FILE *in = stdin;
-    FILE *out = stdin;
+    FILE *out = stdout;
     char *secfile = global_seckey;
     u8 secret[32];
     u8 epublic[32];
