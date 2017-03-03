@@ -509,6 +509,7 @@ static void
 command_archive(struct optparse *options)
 {
     static const struct optparse_long archive[] = {
+        {"delete", 'd', OPTPARSE_NONE},
         {0}
     };
 
@@ -522,10 +523,14 @@ command_archive(struct optparse *options)
     u8 epublic[32];
     u8 shared[32];
     u8 iv[8];
+    int delete = 0;
 
     int option;
     while ((option = optparse_long(options, archive, 0)) != -1) {
         switch (option) {
+            case 'd':
+                delete = 1;
+                break;
             default:
                 fatal("%s", options->errmsg);
         }
@@ -570,12 +575,21 @@ command_archive(struct optparse *options)
     if (!fwrite(epublic, sizeof(epublic), 1, out))
         fatal("failed to write ephemeral key to archive");
     symmetric_encrypt(in, out, shared, iv);
+
+    if (in != stdin)
+        fclose(in);
+    if (out != stdout)
+        fclose(out); /* already flushed */
+
+    if (delete && infile)
+        remove(infile);
 }
 
 static void
 command_extract(struct optparse *options)
 {
     static const struct optparse_long extract[] = {
+        {"delete", 'd', OPTPARSE_NONE},
         {0}
     };
 
@@ -588,10 +602,14 @@ command_extract(struct optparse *options)
     u8 epublic[32];
     u8 shared[32];
     u8 iv[8];
+    int delete = 0;
 
     int option;
     while ((option = optparse_long(options, extract, 0)) != -1) {
         switch (option) {
+            case 'd':
+                delete = 1;
+                break;
             default:
                 fatal("%s", options->errmsg);
         }
@@ -634,6 +652,14 @@ command_extract(struct optparse *options)
         fatal("failed to read ephemeral key from archive");
     compute_shared(shared, secret, epublic);
     symmetric_decrypt(in, out, shared, iv);
+
+    if (in != stdin)
+        fclose(in);
+    if (out != stdout)
+        fclose(out); /* already flushed */
+
+    if (delete && infile)
+        remove(infile);
 }
 
 static void
