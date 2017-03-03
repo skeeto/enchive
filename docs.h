@@ -3,7 +3,7 @@ static const char docs_usage[] =
 "              [--pubkey <file>] [--seckey <file>]\n"
 "              <command> [args]\n"
 "\n"
-"Commands:\n"
+"Commands (unique prefixes accepted):\n"
 "  keygen      generate a new master keypair\n"
 "  archive     archive using the public key\n"
 "  extract     extract from an archive using the secret key\n"
