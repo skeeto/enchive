@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
+#include <errno.h>
 
 #define OPTPARSE_IMPLEMENTATION
 #include "docs.h"
@@ -11,6 +12,11 @@
 #include "optparse.h"
 
 int curve25519_donna(u8 *p, const u8 *s, const u8 *b);
+
+/* Global options. */
+static char *global_random_device = "/dev/urandom";
+static char *global_pubkey = 0;
+static char *global_seckey = 0;
 
 static struct {
     char *name;
@@ -48,8 +54,24 @@ fatal(const char *fmt, ...)
     exit(EXIT_FAILURE);
 }
 
+static void
+get_passphrase_dumb(char *buf, size_t len, char *prompt)
+{
+    size_t passlen;
+    fprintf(stderr, "warning: reading passphrase from stdin with echo\n");
+    fputs(prompt, stderr);
+    fflush(stderr);
+    if (!fgets(buf, len, stdin))
+        fatal("could not read passphrase");
+    passlen = strlen(buf);
+    if (buf[passlen - 1] < ' ')
+        buf[passlen - 1] = 0;
+}
+
 #if defined(__unix__) || defined(__APPLE__)
 #include <fcntl.h>
+#include <unistd.h>
+#include <termios.h>
 
 static FILE *
 secure_creat(char *file)
@@ -59,6 +81,36 @@ secure_creat(char *file)
         return 0;
     return fdopen(fd, "wb");
 }
+
+static void
+get_passphrase(char *buf, size_t len, char *prompt)
+{
+    int tty = open("/dev/tty", O_RDWR);
+    if (tty == -1) {
+        get_passphrase_dumb(buf, len, prompt);
+    } else {
+        char newline = '\n';
+        size_t i = 0;
+        struct termios old, new;
+        write(tty, prompt, strlen(prompt));
+        tcgetattr(tty, &old);
+        new = old;
+        new.c_lflag &= ~ECHO;
+        tcsetattr(tty, TCSANOW, &new);
+        errno = 0;
+        while (i < len - 1 && read(tty, buf + i, 1) == 1) {
+            if (buf[i] == '\n' || buf[i] == '\r')
+                break;
+            i++;
+        }
+        buf[i] = 0;
+        tcsetattr(tty, TCSANOW, &old);
+        write(tty, &newline, 1);
+        close(tty);
+        if (errno)
+            fatal("could not read passphrase from /dev/tty");
+    }
+}
 #else
 
 /* fallback to standard open */
@@ -67,12 +119,30 @@ secure_creat(char *file)
 {
     return fopen(file, "wb");
 }
+
+static void
+get_passphrase(char *buf, size_t len, char *prompt)
+{
+    get_passphrase_dumb(buf, len, prompt);
+}
 #endif
 
-/* Global options. */
-static char *global_random_device = "/dev/urandom";
-static char *global_pubkey = 0;
-static char *global_seckey = 0;
+#define KEY_DERIVE_ITERATIONS 0x400000ul
+
+static void
+key_derive(char *key, u8 *buf)
+{
+    unsigned long i;
+    SHA256_CTX ctx[1];
+    sha256_init(ctx);
+    sha256_final(ctx, buf);
+    for (i = 0; i < KEY_DERIVE_ITERATIONS; i++) {
+        sha256_init(ctx);
+        sha256_update(ctx, (void *)key, strlen(key));
+        sha256_update(ctx, buf, sizeof(buf));
+        sha256_final(ctx, buf);
+    }
+}
 
 static void
 secure_entropy(void *buf, size_t len)
@@ -156,7 +226,7 @@ symmetric_decrypt(FILE *in, FILE *out, u8 *key, u8 *iv)
     chacha_ivsetup(ctx, iv);
     sha256_init(hash);
 
-    /* Always keep SHA224_BLOCK_SIZE bytes in the buffer. */
+    /* Always keep SHA256_BLOCK_SIZE bytes in the buffer. */
     if (!(fread(buffer[0], SHA256_BLOCK_SIZE, 1, in))) {
         if (ferror(in))
             fatal("cannot read ciphertext file");
@@ -177,7 +247,7 @@ symmetric_decrypt(FILE *in, FILE *out, u8 *key, u8 *iv)
         if (!fwrite(buffer[1], z, 1, out))
             fatal("error writing plaintext file");
 
-        /* Move last SHA224_BLOCK_SIZE bytes to the front. */
+        /* Move last SHA256_BLOCK_SIZE bytes to the front. */
         memmove(buffer[0], buffer[0] + z, SHA256_BLOCK_SIZE);
 
         if (z < sizeof(buffer[0]) - SHA256_BLOCK_SIZE)
@@ -232,7 +302,69 @@ default_secfile(void)
 }
 
 static void
-load_key(char *file, u8 *key)
+write_pubkey(char *file, u8 *key)
+{
+    FILE *f = fopen(file, "wb");
+    if (!f)
+        fatal("failed to open key file for writing -- %s", file);
+    cleanup_register(f, file);
+    if (!fwrite(key, 32, 1, f))
+        fatal("failed to write key file -- %s", file);
+    if (fclose(f))
+        fatal("failed to flush key file -- %s", file);
+}
+
+static void
+write_seckey(char *file, u8 *seckey, int encrypt)
+{
+    FILE *secfile;
+    chacha_ctx cha[1];
+    SHA256_CTX sha[1];
+    u8 buf[8 + 24 + 32] = {0};
+    u8 key[32];
+
+    if (encrypt) {
+        char pass[2][256];
+        get_passphrase(pass[0], sizeof(pass[0]),
+                       "passphrase (empty for none): ");
+        get_passphrase(pass[1], sizeof(pass[0]),
+                       "passphrase (repeat): ");
+        if (strcmp(pass[0], pass[1]) != 0)
+            fatal("passphrase don't match");
+        if (!pass[0][0]) {
+
+            encrypt = 0;
+        }  else {
+            key_derive(pass[0], key);
+
+            sha256_init(sha);
+            sha256_update(sha, key, 32);
+            sha256_final(sha, buf + 8);
+
+            secure_entropy(buf, 8);
+        }
+    }
+
+    if (encrypt) {
+        chacha_keysetup(cha, key, 256);
+        chacha_ivsetup(cha, buf);
+        chacha_encrypt_bytes(cha, seckey, buf + 32, 32);
+    } else {
+        memcpy(buf + 32, seckey, 32);
+    }
+
+    secfile = secure_creat(file);
+    if (!secfile)
+        fatal("failed to open key file for writing -- %s", file);
+    cleanup_register(secfile, file);
+    if (!fwrite(buf, sizeof(buf), 1, secfile))
+        fatal("failed to write key file -- %s", file);
+    if (fclose(secfile))
+        fatal("failed to flush key file -- %s", file);
+}
+
+static void
+load_pubkey(char *file, u8 *key)
 {
     FILE *f = fopen(file, "rb");
     if (!f)
@@ -243,21 +375,42 @@ load_key(char *file, u8 *key)
 }
 
 static void
-write_key(char *file, const u8 *key, int clobber)
+load_seckey(char *file, u8 *seckey)
 {
-    FILE *f;
+    FILE *secfile;
+    chacha_ctx cha[1];
+    SHA256_CTX sha[1];
+    u8 buf[8 + 24 + 32];
+    u8 empty[8] = {0};
+    u8 keyhash[SHA256_BLOCK_SIZE];
+    u8 key[32];
 
-    if (!clobber && fopen(file, "r"))
-        fatal("operation would clobber %s", file);
-    f = secure_creat(file);
-    if (!f)
-        fatal("failed to open key file for writing -- %s", file);
-    cleanup_register(f, file);
-    if (!fwrite(key, 32, 1, f))
-        fatal("failed to write key file -- %s", file);
-    if (fclose(f))
-        fatal("failed to flush key file -- %s", file);
+    secfile = fopen(file, "rb");
+    if (!secfile)
+        fatal("failed to open key file for reading -- %s", file);
+    if (!fread(buf, sizeof(buf), 1, secfile))
+        fatal("failed to read key file -- %s", file);
+    fclose(secfile);
+
+    if (memcmp(buf, empty, sizeof(empty)) != 0) {
+        char pass[256];
+        get_passphrase(pass, sizeof(pass), "passphrase: ");
+        key_derive(pass, key);
+
+        sha256_init(sha);
+        sha256_update(sha, key, 32);
+        sha256_final(sha, keyhash);
+        if (memcmp(keyhash, buf + 8, 24) != 0)
+            fatal("wrong passphrase");
+
+        chacha_keysetup(cha, key, 256);
+        chacha_ivsetup(cha, buf);
+        chacha_encrypt_bytes(cha, buf + 32, seckey, 32);
+    } else {
+        memcpy(seckey, buf + 32, 32);
+    }
 }
+
 
 enum command {
     COMMAND_UNKNOWN = -2,
@@ -293,6 +446,7 @@ command_keygen(struct optparse *options)
 {
     static const struct optparse_long keygen[] = {
         {"force", 'f', OPTPARSE_NONE},
+        {"plain", 'u', OPTPARSE_NONE},
         {0}
     };
 
@@ -301,12 +455,16 @@ command_keygen(struct optparse *options)
     u8 public[32];
     u8 secret[32];
     int clobber = 0;
+    int encrypt = 1;
 
     int option;
     while ((option = optparse_long(options, keygen, 0)) != -1) {
         switch (option) {
             case 'f':
                 clobber = 1;
+                break;
+            case 'u':
+                encrypt = 0;
                 break;
             default:
                 fatal("%s", options->errmsg);
@@ -315,13 +473,17 @@ command_keygen(struct optparse *options)
 
     if (!pubfile)
         pubfile = default_pubfile();
+    if (!clobber && fopen(pubfile, "r"))
+        fatal("operation would clobber %s", pubfile);
     if (!secfile)
         secfile = default_secfile();
+    if (!clobber && fopen(secfile, "r"))
+        fatal("operation would clobber %s", secfile);
 
     generate_secret(secret);
     compute_public(public, secret);
-    write_key(pubfile, public, clobber);
-    write_key(secfile, secret, clobber);
+    write_pubkey(pubfile, public);
+    write_seckey(secfile, secret, encrypt);
 }
 
 static void
@@ -352,7 +514,7 @@ command_archive(struct optparse *options)
 
     if (!pubfile)
         pubfile = default_pubfile();
-    load_key(pubfile, public);
+    load_pubkey(pubfile, public);
 
     infile = optparse_arg(options);
     if (infile) {
@@ -416,7 +578,7 @@ command_extract(struct optparse *options)
 
     if (!secfile)
         secfile = default_secfile();
-    load_key(secfile, secret);
+    load_seckey(secfile, secret);
 
     infile = optparse_arg(options);
     if (infile) {
@@ -517,7 +679,7 @@ main(int argc, char **argv)
     options->permute = 0;
     (void)argc;
 
-    while ((option = optparse_long(options, global, 0)) != -1) {
+   while ((option = optparse_long(options, global, 0)) != -1) {
         switch (option) {
             case 'r':
                 global_random_device = options->optarg;
