@@ -4,9 +4,12 @@
 #include <stdarg.h>
 
 #define OPTPARSE_IMPLEMENTATION
+#include "docs.h"
 #include "sha256.h"
 #include "chacha.h"
 #include "optparse.h"
+
+#define BUFSIZE (16 * 4096)
 
 int curve25519_donna(u8 *p, const u8 *s, const u8 *b);
 
@@ -21,10 +24,15 @@ fatal(const char *fmt, ...)
     exit(EXIT_FAILURE);
 }
 
+/* Global options. */
+static char *global_random_device = "/dev/urandom";
+static char *global_pubkey = 0;
+static char *global_seckey = 0;
+
 static void
 secure_entropy(void *buf, size_t len)
 {
-    FILE *r = fopen("/dev/urandom", "rb");
+    FILE *r = fopen(global_random_device, "rb");
     if (!r)
         fatal("failed to open /dev/urandom");
     if (!fread(buf, len, 1, r))
@@ -57,7 +65,7 @@ compute_shared(u8 *sh, const u8 *s, const u8 *p)
 static void
 symmetric_encrypt(FILE *in, FILE *out, u8 *key, u8 *iv)
 {
-    static u8 buffer[2][64 * 1024];
+    static u8 buffer[2][BUFSIZE];
     u8 sha256[SHA256_BLOCK_SIZE];
     SHA256_CTX hash[1];
     chacha_ctx ctx[1];
@@ -69,26 +77,26 @@ symmetric_encrypt(FILE *in, FILE *out, u8 *key, u8 *iv)
         size_t z = fread(buffer[0], 1, sizeof(buffer[0]), in);
         if (!z) {
             if (ferror(in))
-                fatal("error reading source file");
+                fatal("error reading plaintext file");
             break;
         }
         sha256_update(hash, buffer[0], z);
         chacha_encrypt_bytes(ctx, buffer[0], buffer[1], z);
         if (!fwrite(buffer[1], z, 1, out))
-            fatal("error writing destination file");
+            fatal("error writing ciphertext file");
     }
 
     sha256_final(hash, sha256);
     if (!fwrite(sha256, SHA224_BLOCK_SIZE, 1, out))
-        fatal("error writing checksum to destination file");
+        fatal("error writing checksum to ciphertext file");
     if (fflush(out))
-        fatal("error flushing to destination");
+        fatal("error flushing to ciphertext file");
 }
 
 static void
 symmetric_decrypt(FILE *in, FILE *out, u8 *key, u8 *iv)
 {
-    static u8 buffer[2][64 * 1024];
+    static u8 buffer[2][BUFSIZE];
     u8 sha256[SHA256_BLOCK_SIZE];
     SHA256_CTX hash[1];
     chacha_ctx ctx[1];
@@ -99,17 +107,16 @@ symmetric_decrypt(FILE *in, FILE *out, u8 *key, u8 *iv)
     /* Always keep SHA224_BLOCK_SIZE bytes in the buffer. */
     if (!(fread(buffer[0], SHA224_BLOCK_SIZE, 1, in))) {
         if (ferror(in))
-            fatal("error initially reading source file");
+            fatal("cannot read ciphertext file");
         else
-            fatal("source file missing checksum");
+            fatal("ciphertext file too short");
     }
-
     for (;;) {
         u8 *p = buffer[0] + SHA224_BLOCK_SIZE;
         size_t z = fread(p, 1, sizeof(buffer[0]) - SHA224_BLOCK_SIZE, in);
         if (!z) {
             if (ferror(in))
-                fatal("error reading source file");
+                fatal("error reading ciphertext file");
             break;
         }
         chacha_encrypt_bytes(ctx, buffer[0], buffer[1], z);
@@ -128,16 +135,38 @@ symmetric_decrypt(FILE *in, FILE *out, u8 *key, u8 *iv)
         fatal("checksum mismatch!");
 }
 
-static const char *
-default_pubfile(void)
+static void
+prepend_home(char *buf, size_t buflen, char *file)
 {
-    return "key.pub";
+    size_t filelen = strlen(file);
+    char *home = getenv("HOME");
+    size_t homelen;
+
+    if (!home)
+        fatal("no HOME environment, can't figure out public file");
+    homelen = strlen(home);
+    if (homelen + 1 + filelen + 1 > buflen)
+        fatal("HOME is too long");
+
+    memcpy(buf, home, homelen);
+    buf[homelen] = '/';
+    memcpy(buf + homelen + 1, file, filelen + 1);
 }
 
-static const char *
+static char *
+default_pubfile(void)
+{
+    static char buf[4096];
+    prepend_home(buf, sizeof(buf), ".enchive.pub");
+    return buf;
+}
+
+static char *
 default_secfile(void)
 {
-    return "key.sec";
+    static char buf[4096];
+    prepend_home(buf, sizeof(buf), ".enchive.sec");
+    return buf;
 }
 
 static void
@@ -145,45 +174,90 @@ load_key(const char *file, u8 *key)
 {
     FILE *f = fopen(file, "rb");
     if (!f)
-        fatal("failed to open key file, %s", file);
+        fatal("failed to open key file for reading -- %s", file);
     if (!fread(key, 32, 1, f))
-        fatal("failed to read key file, %s", file);
+        fatal("failed to read key file -- %s", file);
     fclose(f);
 }
 
 static void
-write_key(const char *file, const u8 *key)
+write_key(const char *file, const u8 *key, int clobber)
 {
-    FILE *f = fopen(file, "wb");
+    FILE *f;
+
+    if (!clobber && fopen(file, "r"))
+        fatal("operation would clobber %s", file);
+    f = fopen(file, "wb");
     if (!f)
-        fatal("failed to open key file, %s", file);
+        fatal("failed to open key file for writing -- %s", file);
     if (!fwrite(key, 32, 1, f))
-        fatal("failed to write key file, %s", file);
+        fatal("failed to write key file -- %s", file);
     fclose(f);
+}
+
+enum command {
+    COMMAND_UNKNOWN = -2,
+    COMMAND_AMBIGUOUS = -1,
+    COMMAND_KEYGEN,
+    COMMAND_ARCHIVE,
+    COMMAND_EXTRACT,
+    COMMAND_HELP
+};
+
+static const char command_names[][8] = {
+    "keygen", "archive", "extract", "help"
+};
+
+static enum command
+parse_command(char *command)
+{
+    int found = -2;
+    size_t len = strlen(command);
+    int i;
+    for (i = 0; i < 4; i++) {
+        if (strncmp(command, command_names[i], len) == 0) {
+            if (found >= 0)
+                return COMMAND_AMBIGUOUS;
+            found = i;
+        }
+    }
+    return found;
 }
 
 static void
 command_keygen(struct optparse *options)
 {
     static const struct optparse_long keygen[] = {
+        {"force", 'f', OPTPARSE_NONE},
         {0}
     };
 
-    const char *pubfile = default_pubfile();
-    const char *secfile = default_secfile();
+    char *pubfile = global_pubkey;
+    char *secfile = global_seckey;
     u8 public[32];
     u8 secret[32];
+    int clobber = 0;
 
     int option;
     while ((option = optparse_long(options, keygen, 0)) != -1) {
         switch (option) {
+            case 'f':
+                clobber = 1;
+                break;
+            default:
+                fatal("%s", options->errmsg);
         }
     }
 
+    if (!pubfile)
+        pubfile = default_pubfile();
+    if (!secfile)
+        secfile = default_secfile();
+
     generate_secret(secret);
     compute_public(public, secret);
-    write_key(pubfile, public);
-    write_key(secfile, secret);
+    write_key(pubfile, public, clobber);
+    write_key(secfile, secret, clobber);
 }
 
 static void
@@ -193,7 +267,7 @@ command_archive(struct optparse *options)
         {0}
     };
 
-    const char *pubfile = default_pubfile();
+    char *pubfile = global_pubkey;
     u8 public[32];
     u8 esecret[32];
     u8 epublic[32];
@@ -203,9 +277,13 @@ command_archive(struct optparse *options)
     int option;
     while ((option = optparse_long(options, archive, 0)) != -1) {
         switch (option) {
+            default:
+                fatal("%s", options->errmsg);
         }
     }
 
+    if (!pubfile)
+        pubfile = default_pubfile();
     load_key(pubfile, public);
 
     /* Generare ephemeral keypair. */
@@ -228,7 +306,7 @@ command_extract(struct optparse *options)
         {0}
     };
 
-    const char *secfile = default_secfile();
+    char *secfile = global_seckey;
     u8 secret[32];
     u8 epublic[32];
     u8 shared[32];
@@ -240,6 +318,8 @@ command_extract(struct optparse *options)
         }
     }
 
+    if (!secfile)
+        secfile = default_secfile();
     load_key(secfile, secret);
 
     if (!(fread(iv, sizeof(iv), 1, stdin)))
@@ -257,17 +337,53 @@ command_help(struct optparse *options)
         {0}
     };
 
+    char *command;
+
     int option;
     while ((option = optparse_long(options, help, 0)) != -1) {
         switch (option) {
+            default:
+                fatal("%s", options->errmsg);
         }
     }
+
+    command = optparse_arg(options);
+    if (!command)
+        command = "help";
+
+    switch (parse_command(command)) {
+        case COMMAND_UNKNOWN:
+        case COMMAND_AMBIGUOUS:
+            fatal("unknown command -- %s\n", command);
+            break;
+        case COMMAND_KEYGEN:
+            fputs(docs_keygen, stdout);
+            break;
+        case COMMAND_ARCHIVE:
+            fputs(docs_archive, stdout);
+            break;
+        case COMMAND_EXTRACT:
+            fputs(docs_extract, stdout);
+            break;
+        case COMMAND_HELP:
+            fputs(docs_help, stdout);
+            break;
+    }
+}
+
+static void
+print_usage(FILE *f)
+{
+    fputs(docs_usage, f);
 }
 
 int
 main(int argc, char **argv)
 {
     static const struct optparse_long global[] = {
+        {"random-device", 'r', OPTPARSE_REQUIRED},
+        {"pubkey",        'p', OPTPARSE_REQUIRED},
+        {"seckey",        's', OPTPARSE_REQUIRED},
         {0}
     };
 
@@ -280,24 +396,47 @@ main(int argc, char **argv)
 
     while ((option = optparse_long(options, global, 0)) != -1) {
         switch (option) {
+            case 'r':
+                global_random_device = options->optarg;
+                break;
+            case 'p':
+                global_pubkey = options->optarg;
+                break;
+            case 's':
+                global_seckey = options->optarg;
+                break;
+            default:
+                fatal("%s", options->errmsg);
         }
     }
 
     command = optparse_arg(options);
     options->permute = 1;
-
     if (!command) {
-        command_help(options);
-        fatal("missing command");
-    } else if (strcmp(command, "keygen") == 0) {
-         command_keygen(options);
-    } else if (strcmp(command, "archive") == 0) {
-        command_archive(options);
-    } else if (strcmp(command, "extract") == 0) {
-        command_extract(options);
-    } else {
-        command_help(options);
-        fatal("unknown command, %s", command);
+        fprintf(stderr, "enchive: missing command\n");
+        print_usage(stderr);
+        exit(EXIT_FAILURE);
+    }
+
+    switch (parse_command(command)) {
+        case COMMAND_UNKNOWN:
+        case COMMAND_AMBIGUOUS:
+            fprintf(stderr, "enchive: unknown command, %s\n", command);
+            print_usage(stderr);
+            exit(EXIT_FAILURE);
+            break;
+        case COMMAND_KEYGEN:
+            command_keygen(options);
+            break;
+        case COMMAND_ARCHIVE:
+            command_archive(options);
+            break;
+        case COMMAND_EXTRACT:
+            command_extract(options);
+            break;
+        case COMMAND_HELP:
+            command_help(options);
+            break;
     }
     return 0;
 }
