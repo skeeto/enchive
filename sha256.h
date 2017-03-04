@@ -14,9 +14,6 @@
 
 #define SHA256_BLOCK_SIZE 32
 
-typedef unsigned char BYTE;
-typedef unsigned int  WORD;
-
 typedef struct {
 	u8 data[64];
 	u32 datalen;
