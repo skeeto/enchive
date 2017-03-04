@@ -502,7 +502,7 @@ command_keygen(struct optparse *options)
         {"derive", 'd', OPTPARSE_NONE},
         {"force",  'f', OPTPARSE_NONE},
         {"plain",  'u', OPTPARSE_NONE},
-        {0}
+        {0, 0, 0}
     };
 
     char *pubfile = global_pubkey;
@@ -563,7 +563,7 @@ command_archive(struct optparse *options)
 {
     static const struct optparse_long archive[] = {
         {"delete", 'd', OPTPARSE_NONE},
-        {0}
+        {0, 0, 0}
     };
 
     char *infile;
@@ -643,7 +643,7 @@ command_extract(struct optparse *options)
 {
     static const struct optparse_long extract[] = {
         {"delete", 'd', OPTPARSE_NONE},
-        {0}
+        {0, 0, 0}
     };
 
     char *infile;
@@ -719,7 +719,7 @@ static void
 command_help(struct optparse *options)
 {
     static const struct optparse_long help[] = {
-        {0}
+        {0, 0, 0}
     };
 
     char *command;
@@ -769,7 +769,7 @@ main(int argc, char **argv)
         {"random-device", 'r', OPTPARSE_REQUIRED},
         {"pubkey",        'p', OPTPARSE_REQUIRED},
         {"seckey",        's', OPTPARSE_REQUIRED},
-        {0}
+        {0, 0, 0}
     };
 
     int option;
