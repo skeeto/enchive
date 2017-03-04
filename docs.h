@@ -1,6 +1,6 @@
 static const char docs_usage[] =
 "usage enchive [--random-device <file>]\n"
-"              [--pubkey <file>] [--seckey <file>]\n"
+"              [-p|--pubkey <file>] [-s|--seckey <file>]\n"
 "              <command> [args]\n"
 "\n"
 "Commands (unique prefixes accepted):\n"
@@ -10,8 +10,8 @@ static const char docs_usage[] =
 "  help        get help on a specific topic\n"
 "\n"
 "  --random-device <file> select the entropy source [/dev/urandom]\n"
-"  --pubkey <file>        set the public key file [~/.enchive.pub]\n"
-"  --seckey <file>        set the secret key file [~/.enchive.sec]\n"
+"  --pubkey <file>, -p    set the public key file [~/.enchive.pub]\n"
+"  --seckey <file>, -s    set the secret key file [~/.enchive.sec]\n"
 "\n"
 "Enchive archives files by encrypting them to yourself using your\n"
 "public key. It uses ChaCha20, Curve25519, and SHA-224.\n";
