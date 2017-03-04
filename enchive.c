@@ -145,6 +145,7 @@ key_derive(char *key, u8 *buf, unsigned long iterations)
     }
 }
 
+#if defined(__unix__) || defined(__APPLE__)
 static void
 secure_entropy(void *buf, size_t len)
 {
@@ -155,6 +156,24 @@ secure_entropy(void *buf, size_t len)
         fatal("failed to gather entropy");
     fclose(r);
 }
+
+#elif defined (_WIN32)
+#include <windows.h>
+
+static void
+secure_entropy(void *buf, size_t len)
+{
+    HCRYPTPROV h = 0;
+    DWORD type = PROV_RSA_FULL;
+    DWORD flags = CRYPT_VERIFYCONTEXT | CRYPT_SILENT;
+    if (!CryptAcquireContext(&h, 0, 0, type, flags) ||
+        !CryptGenRandom(h, len, buf))
+        fatal("failed to gather entropy");
+    CryptReleaseContext(h, 0);
+}
+#endif
+
+
 
 static void
 generate_secret(u8 *s)
@@ -729,6 +748,9 @@ main(int argc, char **argv)
    while ((option = optparse_long(options, global, 0)) != -1) {
         switch (option) {
             case 'r':
+                #ifdef _WIN32
+                fprintf(stderr, "warning: --random-device ignored\n");
+                #endif
                 global_random_device = options->optarg;
                 break;
             case 'p':
