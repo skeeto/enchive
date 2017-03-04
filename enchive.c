@@ -16,6 +16,8 @@ int curve25519_donna(u8 *p, const u8 *s, const u8 *b);
 #define KEY_DERIVE_ITERATIONS    20
 #define SECKEY_DERIVE_ITERATIONS 24
 
+#define PASSPHRASE_MAX 1024
+
 /* Global options. */
 static char *global_random_device = "/dev/urandom";
 static char *global_pubkey = 0;
@@ -378,7 +380,7 @@ write_seckey(char *file, u8 *seckey, unsigned long iterations)
     u8 key[32];
 
     if (iterations) {
-        char pass[2][256];
+        char pass[2][PASSPHRASE_MAX];
         get_passphrase(pass[0], sizeof(pass[0]),
                        "passphrase (empty for none): ");
         if (!pass[0][0]) {
@@ -451,7 +453,7 @@ load_seckey(char *file, u8 *seckey)
     fclose(secfile);
 
     if (memcmp(buf, empty, sizeof(empty)) != 0) {
-        char pass[256];
+        char pass[PASSPHRASE_MAX];
         unsigned long iterations =
             ((unsigned long)buf[8]  << 24) |
             ((unsigned long)buf[9]  << 16) |
@@ -607,7 +609,7 @@ command_keygen(struct optparse *options)
         load_seckey(secfile, secret);
     } else if (derive) {
         /* Generate secret key from passphrase. */
-        char pass[2][256];
+        char pass[2][PASSPHRASE_MAX];
         get_passphrase(pass[0], sizeof(pass[0]),
                        "secret key passphrase: ");
         get_passphrase(pass[1], sizeof(pass[0]),
