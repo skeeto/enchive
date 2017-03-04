@@ -13,6 +13,9 @@
 
 int curve25519_donna(u8 *p, const u8 *s, const u8 *b);
 
+#define KEY_DERIVE_ITERATIONS    0x00100000ul
+#define SECKEY_DERIVE_ITERATIONS 0x01000000ul
+
 /* Global options. */
 static char *global_random_device = "/dev/urandom";
 static char *global_pubkey = 0;
@@ -160,9 +163,6 @@ get_passphrase(char *buf, size_t len, char *prompt)
     get_passphrase_dumb(buf, len, prompt);
 }
 #endif
-
-#define KEY_DERIVE_ITERATIONS    0x00400000ul
-#define SECKEY_DERIVE_ITERATIONS 0x01000000ul
 
 static void
 key_derive(char *key, u8 *buf, unsigned long iterations)
@@ -369,37 +369,41 @@ write_pubkey(char *file, u8 *key)
 }
 
 static void
-write_seckey(char *file, u8 *seckey, int encrypt)
+write_seckey(char *file, u8 *seckey, unsigned long iterations)
 {
     FILE *secfile;
     chacha_ctx cha[1];
     SHA256_CTX sha[1];
-    u8 buf[8 + 24 + 32] = {0};
+    u8 buf[8 + 4 + 20 + 32] = {0};
     u8 key[32];
 
-    if (encrypt) {
+    if (iterations) {
         char pass[2][256];
         get_passphrase(pass[0], sizeof(pass[0]),
                        "passphrase (empty for none): ");
         if (!pass[0][0]) {
-            encrypt = 0;
+            iterations = 0;
         }  else {
             get_passphrase(pass[1], sizeof(pass[0]),
                            "passphrase (repeat): ");
             if (strcmp(pass[0], pass[1]) != 0)
                 fatal("passphrases don't match");
 
-            key_derive(pass[0], key, KEY_DERIVE_ITERATIONS);
+            key_derive(pass[0], key, iterations);
+            buf[8]  = iterations >> 24;
+            buf[9]  = iterations >> 16;
+            buf[10] = iterations >>  8;
+            buf[11] = iterations >>  0;
 
             sha256_init(sha);
             sha256_update(sha, key, 32);
-            sha256_final(sha, buf + 8);
+            sha256_final(sha, buf + 12);
 
             secure_entropy(buf, 8);
         }
     }
 
-    if (encrypt) {
+    if (iterations) {
         chacha_keysetup(cha, key, 256);
         chacha_ivsetup(cha, buf);
         chacha_encrypt_bytes(cha, seckey, buf + 32, 32);
@@ -434,7 +438,7 @@ load_seckey(char *file, u8 *seckey)
     FILE *secfile;
     chacha_ctx cha[1];
     SHA256_CTX sha[1];
-    u8 buf[8 + 24 + 32];
+    u8 buf[8 + 4 + 20 + 32];
     u8 empty[8] = {0};
     u8 keyhash[SHA256_BLOCK_SIZE];
     u8 key[32];
@@ -448,13 +452,19 @@ load_seckey(char *file, u8 *seckey)
 
     if (memcmp(buf, empty, sizeof(empty)) != 0) {
         char pass[256];
+        unsigned long iterations =
+            ((unsigned long)buf[8]  << 24) |
+            ((unsigned long)buf[9] << 16) |
+            ((unsigned long)buf[10] <<  8) |
+            ((unsigned long)buf[11] <<  0);
         get_passphrase(pass, sizeof(pass), "passphrase: ");
-        key_derive(pass, key, KEY_DERIVE_ITERATIONS);
+
+        key_derive(pass, key, iterations);
 
         sha256_init(sha);
         sha256_update(sha, key, 32);
         sha256_final(sha, keyhash);
-        if (memcmp(keyhash, buf + 8, 24) != 0)
+        if (memcmp(keyhash, buf + 12, 20) != 0)
             fatal("wrong passphrase");
 
         chacha_keysetup(cha, key, 256);
@@ -499,9 +509,10 @@ static void
 command_keygen(struct optparse *options)
 {
     static const struct optparse_long keygen[] = {
-        {"derive", 'd', OPTPARSE_NONE},
-        {"force",  'f', OPTPARSE_NONE},
-        {"plain",  'u', OPTPARSE_NONE},
+        {"derive",      'd', OPTPARSE_OPTIONAL},
+        {"force",       'f', OPTPARSE_NONE},
+        {"iterations",  'k', OPTPARSE_REQUIRED},
+        {"plain",       'u', OPTPARSE_NONE},
         {0, 0, 0}
     };
 
@@ -512,16 +523,39 @@ command_keygen(struct optparse *options)
     int clobber = 0;
     int encrypt = 1;
     int derive = 0;
+    unsigned long key_derive_iterations = KEY_DERIVE_ITERATIONS;
+    unsigned long seckey_derive_iterations = SECKEY_DERIVE_ITERATIONS;
 
     int option;
     while ((option = optparse_long(options, keygen, 0)) != -1) {
         switch (option) {
-            case 'd':
+            case 'd': {
+                char *p;
+                char *arg = options->optarg;
                 derive = 1;
-                break;
+                if (arg) {
+                    derive = 1;
+                    errno = 0;
+                    seckey_derive_iterations = strtoul(arg, &p, 10);
+                    if (errno || *p)
+                        fatal("invalid argument -- %s", arg);
+                    if (seckey_derive_iterations > 0xFFFFFFFFUL)
+                        fatal("must be <= 0xFFFFFFFF -- %s", arg);
+                }
+            } break;
             case 'f':
                 clobber = 1;
                 break;
+            case 'k': {
+                char *p;
+                char *arg = options->optarg;
+                errno = 0;
+                key_derive_iterations = strtoul(arg, &p, 10);
+                if (errno || *p)
+                    fatal("invalid argument -- %s", arg);
+                if (key_derive_iterations > 0xFFFFFFFFUL)
+                    fatal("must be <= 0xFFFFFFFF -- %s", arg);
+            } break;
             case 'u':
                 encrypt = 0;
                 break;
@@ -548,14 +582,14 @@ command_keygen(struct optparse *options)
                        "secret key passphrase (repeat): ");
         if (strcmp(pass[0], pass[1]) != 0)
             fatal("passphrases don't match");
-        key_derive(pass[0], secret, SECKEY_DERIVE_ITERATIONS);
+        key_derive(pass[0], secret, seckey_derive_iterations);
     } else {
         generate_secret(secret);
     }
 
     compute_public(public, secret);
     write_pubkey(pubfile, public);
-    write_seckey(secfile, secret, encrypt);
+    write_seckey(secfile, secret, encrypt ? key_derive_iterations : 0);
 }
 
 static void
