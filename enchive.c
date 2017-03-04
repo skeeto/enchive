@@ -603,7 +603,9 @@ command_keygen(struct optparse *options)
             fatal("operation would clobber %s", pubfile);
         if (secfile_exists)
             fatal("operation would clobber %s", secfile);
-    } else if (edit) {
+    }
+
+    if (edit) {
         if (!secfile_exists)
             fatal("cannot edit non-existing file %s", secfile);
         load_seckey(secfile, secret);
