@@ -75,5 +75,4 @@ The process for decrypting a file:
 
 * Symmetric key management: change the passphrase on your secret key.
 * Decrypt multiple files in a short period: some kind of key agent?
-* Paramaters/knobs, especially with key derivation.
 * Improve key generation.
