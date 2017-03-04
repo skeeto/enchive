@@ -90,6 +90,5 @@ The process for decrypting a file:
 
 ## Roadmap
 
-* Symmetric key management: change the passphrase on your secret key.
 * Decrypt multiple files in a short period: some kind of key agent?
 * Improve key generation.
