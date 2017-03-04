@@ -70,3 +70,10 @@ The process for decrypting a file:
 4. Initialize ChaCha20 with the shared secret as the key.
 5. Decrypt the ciphertext using ChaCha20.
 6. Verify `sha256(key + sha256(plaintext))`.
+
+## Roadmap
+
+* Symmetric key management: change the passphrase on your secret key.
+* Decrypt multiple files in a short period: some kind of key agent?
+* Paramaters/knobs, especially with key derivation.
+* Improve key generation.
