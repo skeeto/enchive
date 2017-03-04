@@ -12,7 +12,8 @@ Files are secured with uses ChaCha20, Curve25519, and SHA-256.
 
 There are only three commands to worry about: `keygen`, `archive`, and
 `extract`. The very first thing to do is generate a master keypair
-using `keygen`.
+using `keygen`. You will be prompted for the passphrase to protect the
+secret key, just like `ssh-keygen`.
 
     $ enchive keygen
 
@@ -23,19 +24,38 @@ files. It's sufficient to encrypt files, but not to decrypt them.
 
 To archive a file for storage:
 
-    $ enchive archive file.tar.gz
+    $ enchive archive sensitive.zip
 
-This will encrypt `file.tar.gz` as `file.tar.gz.enchive` (leaving the
-original in place). You can safely archive this wherever.
+This will encrypt `sensitive.zip` as `sensitive.zip.enchive` (leaving
+the original in place). You can safely archive this wherever.
 
-To extract the file later on a machine with `.encrypt.sec`:
+To extract the file on a machine with `.encrypt.sec`, use `extract`.
+It will prompt for the passphrase you entered during key generation.
 
-    $ enchive extract file.tar.gz.enchive
+    $ enchive extract sensitive.zip.enchive
 
-This will reproduce `file.tar.gz`.
+The original `sensitive.zip` will be reproduced.
 
 With no filenames, `archive` and `extract` operate on standard input
 and output.
+
+### Key management
+
+One of the core features of Enchive is the ability to derive an
+asymmetric key pair from a passphrase. This means you can store your
+archive key in your brain! To access this feature, use the `--derive`
+(`-d`) option with the `keygen` command.
+
+    $ enchive keygen --derive
+
+There's an optional argument to `--derive` that controls the number of
+key derivation iterations (e.g. `--derive=26`). The default is 24.
+This is a power two exponent, so every increment doubles the cost.
+
+If you want to change your protection passphrase, use the `--edit`
+option with `keygen`. It will load the secret key as if it were going
+to "extract" an archive, then write it back out with the new options.
+This mode will also regenerate the public key file.
 
 ## Notes
 
