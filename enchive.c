@@ -92,7 +92,8 @@ get_passphrase(char *buf, size_t len, char *prompt)
         char newline = '\n';
         size_t i = 0;
         struct termios old, new;
-        write(tty, prompt, strlen(prompt));
+        if (write(tty, prompt, strlen(prompt)) == -1)
+            fatal("error asking for passphrase");
         tcgetattr(tty, &old);
         new = old;
         new.c_lflag &= ~ECHO;
@@ -105,7 +106,8 @@ get_passphrase(char *buf, size_t len, char *prompt)
         }
         buf[i] = 0;
         tcsetattr(tty, TCSANOW, &old);
-        write(tty, &newline, 1);
+        if (write(tty, &newline, 1) == -1)
+            fatal("error asking for passphrase");
         close(tty);
         if (errno)
             fatal("could not read passphrase from /dev/tty");
