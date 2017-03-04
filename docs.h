@@ -17,11 +17,12 @@ static const char docs_usage[] =
 "public key. It uses ChaCha20, Curve25519, and SHA-224.\n";
 
 static const char docs_keygen[] =
-"usage: enchive keygen [-d|--derive[=count]] [-f|--force] [-p|--plain]\n"
-"                      [-k|--iterations count]\n"
+"usage: enchive keygen [-d|--derive[=count]] [-e|--edit] [-f|--force]\n"
+"                      [-p|--plain] [-k|--iterations count]\n"
 "  Generate a brand new keypair.\n"
 "\n"
-"  --derive=<n>       derive secret key from a passphrase [16,777,216]\n"
+"  --derive[=<n>]     derive secret key from a passphrase [16,777,216]\n"
+"  --edit             edit the protection on an existing key\n"
 "  --iterations <n>   iterations for protection key derivation [1,048,576]\n"
 "  --force, -f        overwrite any existing keys (default: no clobber)\n"
 "  --plain, -u        don't encrypt the secret key with a protection key\n"

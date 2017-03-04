@@ -475,6 +475,16 @@ load_seckey(char *file, u8 *seckey)
     }
 }
 
+static int
+file_exists(char *filename)
+{
+    FILE *f = fopen(filename, "r");
+    if (f) {
+        fclose(f);
+        return 1;
+    }
+    return 0;
+}
 
 enum command {
     COMMAND_UNKNOWN = -2,
@@ -510,6 +520,7 @@ command_keygen(struct optparse *options)
 {
     static const struct optparse_long keygen[] = {
         {"derive",      'd', OPTPARSE_OPTIONAL},
+        {"edit"  ,      'e', OPTPARSE_NONE},
         {"force",       'f', OPTPARSE_NONE},
         {"iterations",  'k', OPTPARSE_REQUIRED},
         {"plain",       'u', OPTPARSE_NONE},
@@ -518,11 +529,14 @@ command_keygen(struct optparse *options)
 
     char *pubfile = global_pubkey;
     char *secfile = global_seckey;
+    int pubfile_exists;
+    int secfile_exists;
     u8 public[32];
     u8 secret[32];
     int clobber = 0;
-    int encrypt = 1;
     int derive = 0;
+    int edit = 0;
+    int protect = 1;
     unsigned long key_derive_iterations = KEY_DERIVE_ITERATIONS;
     unsigned long seckey_derive_iterations = SECKEY_DERIVE_ITERATIONS;
 
@@ -543,6 +557,9 @@ command_keygen(struct optparse *options)
                         fatal("must be <= 0xFFFFFFFF -- %s", arg);
                 }
             } break;
+            case 'e':
+                edit = 1;
+                break;
             case 'f':
                 clobber = 1;
                 break;
@@ -557,24 +574,34 @@ command_keygen(struct optparse *options)
                     fatal("must be <= 0xFFFFFFFF -- %s", arg);
             } break;
             case 'u':
-                encrypt = 0;
+                protect = 0;
                 break;
             default:
                 fatal("%s", options->errmsg);
         }
     }
 
+    if (edit && derive)
+        fatal("--edit and --derive are mutually exclusive");
+
     if (!pubfile)
         pubfile = default_pubfile();
-    if (!clobber && fopen(pubfile, "r"))
-        fatal("operation would clobber %s", pubfile);
+    pubfile_exists = file_exists(pubfile);
     if (!secfile)
         secfile = default_secfile();
-    if (!clobber && fopen(secfile, "r"))
-        fatal("operation would clobber %s", secfile);
+    secfile_exists = file_exists(secfile);
 
-    /* Generate secret key. */
-    if (derive) {
+    if (!edit && !clobber) {
+        if (pubfile_exists)
+            fatal("operation would clobber %s", pubfile);
+        if (secfile_exists)
+            fatal("operation would clobber %s", secfile);
+    } else if (edit) {
+        if (!secfile_exists)
+            fatal("cannot edit non-existing file %s", secfile);
+        load_seckey(secfile, secret);
+    } else if (derive) {
+        /* Generate secret key from passphrase. */
         char pass[2][256];
         get_passphrase(pass[0], sizeof(pass[0]),
                        "secret key passphrase: ");
@@ -584,12 +611,13 @@ command_keygen(struct optparse *options)
             fatal("passphrases don't match");
         key_derive(pass[0], secret, seckey_derive_iterations);
     } else {
+        /* Generate secret key from entropy. */
         generate_secret(secret);
     }
 
     compute_public(public, secret);
     write_pubkey(pubfile, public);
-    write_seckey(secfile, secret, encrypt ? key_derive_iterations : 0);
+    write_seckey(secfile, secret, protect ? key_derive_iterations : 0);
 }
 
 static void
