@@ -111,8 +111,40 @@ get_passphrase(char *buf, size_t len, char *prompt)
             fatal("could not read passphrase from /dev/tty");
     }
 }
-#else
 
+#elif defined(_WIN32)
+#include <windows.h>
+
+static void
+get_passphrase(char *buf, size_t len, char *prompt)
+{
+    DWORD orig;
+    HANDLE in = GetStdHandle(STD_INPUT_HANDLE);
+    if (!GetConsoleMode(in, &orig)) {
+        get_passphrase_dumb(buf, len, prompt);
+    } else {
+        size_t passlen;
+        size_t i = 0;
+        DWORD n;
+        SetConsoleMode(in, orig & ~ENABLE_ECHO_INPUT);
+        fputs(prompt, stderr);
+        if (!fgets(buf, len, stdin))
+            fatal("could not read passphrase");
+        fputc('\n', stderr);
+        passlen = strlen(buf);
+        if (buf[passlen - 1] < ' ')
+            buf[passlen - 1] = 0;
+    }
+}
+
+/* fallback to standard open */
+static FILE *
+secure_creat(char *file)
+{
+    return fopen(file, "wb");
+}
+
+#else
 /* fallback to standard open */
 static FILE *
 secure_creat(char *file)
