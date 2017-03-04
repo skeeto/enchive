@@ -13,8 +13,8 @@
 
 int curve25519_donna(u8 *p, const u8 *s, const u8 *b);
 
-#define KEY_DERIVE_ITERATIONS    0x00100000ul
-#define SECKEY_DERIVE_ITERATIONS 0x01000000ul
+#define KEY_DERIVE_ITERATIONS    20
+#define SECKEY_DERIVE_ITERATIONS 24
 
 /* Global options. */
 static char *global_random_device = "/dev/urandom";
@@ -454,7 +454,7 @@ load_seckey(char *file, u8 *seckey)
         char pass[256];
         unsigned long iterations =
             ((unsigned long)buf[8]  << 24) |
-            ((unsigned long)buf[9] << 16) |
+            ((unsigned long)buf[9]  << 16) |
             ((unsigned long)buf[10] <<  8) |
             ((unsigned long)buf[11] <<  0);
         get_passphrase(pass, sizeof(pass), "passphrase: ");
@@ -537,8 +537,8 @@ command_keygen(struct optparse *options)
     int derive = 0;
     int edit = 0;
     int protect = 1;
-    unsigned long key_derive_iterations = KEY_DERIVE_ITERATIONS;
-    unsigned long seckey_derive_iterations = SECKEY_DERIVE_ITERATIONS;
+    unsigned long key_derive_iterations = 1UL << KEY_DERIVE_ITERATIONS;
+    unsigned long seckey_derive_iterations = 1UL << SECKEY_DERIVE_ITERATIONS;
 
     int option;
     while ((option = optparse_long(options, keygen, 0)) != -1) {
@@ -548,13 +548,15 @@ command_keygen(struct optparse *options)
                 char *arg = options->optarg;
                 derive = 1;
                 if (arg) {
-                    derive = 1;
+                    long n;
                     errno = 0;
-                    seckey_derive_iterations = strtoul(arg, &p, 10);
+                    n = strtol(arg, &p, 10);
                     if (errno || *p)
                         fatal("invalid argument -- %s", arg);
-                    if (seckey_derive_iterations > 0xFFFFFFFFUL)
-                        fatal("must be <= 0xFFFFFFFF -- %s", arg);
+                    if (n < 0 || n > 31)
+                        fatal("--derive argument must be 0 <= n <= 31 -- %s",
+                              arg);
+                    seckey_derive_iterations = 1UL << n;
                 }
             } break;
             case 'e':
@@ -566,12 +568,15 @@ command_keygen(struct optparse *options)
             case 'k': {
                 char *p;
                 char *arg = options->optarg;
+                long n;
                 errno = 0;
-                key_derive_iterations = strtoul(arg, &p, 10);
+                n = strtol(arg, &p, 10);
                 if (errno || *p)
                     fatal("invalid argument -- %s", arg);
-                if (key_derive_iterations > 0xFFFFFFFFUL)
-                    fatal("must be <= 0xFFFFFFFF -- %s", arg);
+                if (n < 0 || n > 31)
+                    fatal("--iterations argument must be 0 <= n <= 31 -- %s",
+                          arg);
+                key_derive_iterations = 1UL << n;
             } break;
             case 'u':
                 protect = 0;
