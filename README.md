@@ -6,6 +6,8 @@ solutions such as GnuPG. This program has no external dependencies and
 is very easy to build for local use. Portability is emphasized over
 performance.
 
+Supported platforms: Linux, BSD, macOS, Windows
+
 Files are secured with uses ChaCha20, Curve25519, and SHA-256.
 
 ## Usage
@@ -61,11 +63,6 @@ This mode will also regenerate the public key file.
 
 There's no effort at error recovery. It bails out on early on the
 first error. It should clean up any incomplete files when it does so.
-
-The `--derive` key generation option can be used to produce
-deterministic keys which you can re-derive should your secret key
-lost. This key derivation function is run more aggressively (slowly)
-when generating a master key.
 
 ## Format
 
