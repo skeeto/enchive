@@ -3,9 +3,10 @@
 Enchive is a tool encrypts files to yourself for long-term archival.
 It's intended as a focused, simple alternative to more complex
 solutions such as GnuPG. This program has no external dependencies and
-is very easy to build for local use.
+is very easy to build for local use. Portability is emphasized over
+performance.
 
-Files are secured with uses ChaCha20, Curve25519, and SHA-224.
+Files are secured with uses ChaCha20, Curve25519, and SHA-256.
 
 ## Usage
 
@@ -33,9 +34,18 @@ To extract the file later on a machine with `.encrypt.sec`:
 
 This will reproduce `file.tar.gz`.
 
+With no filenames, `archive` and `extract` operate on standard input
+and output.
+
 ## Notes
 
-There's no effort at error recovery. It bails out on the first error.
+There's no effort at error recovery. It bails out on early on the
+first error. It should clean up any incomplete files when it does so.
+
+The `--derive` key generation option can be used to produce
+deterministic keys which you can re-derive should your secret key
+lost. This key derivation function is run more aggressively (slowly)
+when generating a master key.
 
 ## Format
 
