@@ -381,14 +381,14 @@ write_seckey(char *file, u8 *seckey, int encrypt)
         char pass[2][256];
         get_passphrase(pass[0], sizeof(pass[0]),
                        "passphrase (empty for none): ");
-        get_passphrase(pass[1], sizeof(pass[0]),
-                       "passphrase (repeat): ");
-        if (strcmp(pass[0], pass[1]) != 0)
-            fatal("passphrases don't match");
         if (!pass[0][0]) {
-
             encrypt = 0;
         }  else {
+            get_passphrase(pass[1], sizeof(pass[0]),
+                           "passphrase (repeat): ");
+            if (strcmp(pass[0], pass[1]) != 0)
+                fatal("passphrases don't match");
+
             key_derive(pass[0], key, KEY_DERIVE_ITERATIONS);
 
             sha256_init(sha);
