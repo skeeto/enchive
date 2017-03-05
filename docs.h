@@ -11,7 +11,8 @@ static const char *docs_usage[] = {
 "  extract     extract from an archive using the secret key",
 "  help        get help on a specific topic",
 "",
-"  --random-device <file> select the entropy source [/dev/urandom]",
+"  --random-device <file> device for secure entropy ["
+    STR(ENCHIVE_RANDOM_DEVICE) "]",
 "  --pubkey <file>, -p    set the public key file [~/.enchive.pub]",
 "  --seckey <file>, -s    set the secret key file [~/.enchive.sec]",
 "",
@@ -24,9 +25,11 @@ static const char *docs_keygen[] = {
 "                      [-p|--plain] [-k|--iterations count]",
 "  Generate a brand new keypair.",
 "",
-"  --derive[=<n>]     derive secret key from a passphrase [24]",
+"  --derive[=<n>]     derive secret key from a passphrase ["
+    STR(ENCHIVE_SECKEY_DERIVE_ITERATIONS) "]",
 "  --edit             edit the protection on an existing key",
-"  --iterations <n>   iterations for protection key derivation [20]",
+"  --iterations <n>   iterations for protection key derivation ["
+    STR(ENCHIVE_KEY_DERIVE_ITERATIONS)"]",
 "  --force, -f        overwrite any existing keys (default: no clobber)",
 "  --plain, -u        don't encrypt the secret key with a protection key",
 "",

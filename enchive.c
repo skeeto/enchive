@@ -176,7 +176,7 @@ key_derive(char *key, u8 *buf, unsigned long iterations)
 }
 
 #if defined(__unix__) || defined(__APPLE__)
-static char *global_random_device = ENCHIVE_RANDOM_DEVICE;
+static char *global_random_device = STR(ENCHIVE_RANDOM_DEVICE);
 
 static void
 secure_entropy(void *buf, size_t len)

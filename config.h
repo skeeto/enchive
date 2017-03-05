@@ -1,8 +1,10 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
+/* Compile-time configuration */
+
 #ifndef ENCHIVE_RANDOM_DEVICE
-#  define ENCHIVE_RANDOM_DEVICE "/dev/urandom"
+#  define ENCHIVE_RANDOM_DEVICE /dev/urandom
 #endif
 
 #ifndef ENCHIVE_KEY_DERIVE_ITERATIONS
@@ -21,11 +23,18 @@
 #  endif
 #endif
 
+/* Required for correct builds */
+
 #ifndef _POSIX_SOURCE
 #  define _POSIX_SOURCE
 #endif
 
 #define OPTPARSE_IMPLEMENTATION
+
+#define STR(a) XSTR(a)
+#define XSTR(a) #a
+
+/* Integer definitions needed by crypto */
 
 #include <stdint.h>
 
