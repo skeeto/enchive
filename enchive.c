@@ -129,8 +129,6 @@ get_passphrase(char *buf, size_t len, char *prompt)
         get_passphrase_dumb(buf, len, prompt);
     } else {
         size_t passlen;
-        size_t i = 0;
-        DWORD n;
         SetConsoleMode(in, orig & ~ENABLE_ECHO_INPUT);
         fputs(prompt, stderr);
         if (!fgets(buf, len, stdin))
