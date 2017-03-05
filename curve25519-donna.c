@@ -46,7 +46,7 @@
  * from the sample implementation. */
 
 #include <string.h>
-#include "machine.h"
+#include "config.h"
 
 /* Field element representation:
  *

@@ -1,5 +1,9 @@
 #ifndef MACHINE_H
 #define MACHINE_H
+
+#define _POSIX_SOURCE
+#define OPTPARSE_IMPLEMENTATION
+
 #include <stdint.h>
 
 #define U8C(v)  (UINT8_C(v))

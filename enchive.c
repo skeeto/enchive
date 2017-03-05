@@ -1,11 +1,9 @@
-#define _POSIX_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
 #include <errno.h>
 
-#define OPTPARSE_IMPLEMENTATION
 #include "docs.h"
 #include "sha256.h"
 #include "chacha.h"
