@@ -787,6 +787,15 @@ command_extract(struct optparse *options)
 }
 
 static void
+multiputs(const char **s, FILE *f)
+{
+    while (*s) {
+        fputs(*s++, f);
+        putchar('\n');
+    }
+}
+
+static void
 command_help(struct optparse *options)
 {
     static const struct optparse_long help[] = {
@@ -813,16 +822,16 @@ command_help(struct optparse *options)
             fatal("unknown command -- %s\n", command);
             break;
         case COMMAND_KEYGEN:
-            fputs(docs_keygen, stdout);
+            multiputs(docs_keygen, stdout);
             break;
         case COMMAND_ARCHIVE:
-            fputs(docs_archive, stdout);
+            multiputs(docs_archive, stdout);
             break;
         case COMMAND_EXTRACT:
-            fputs(docs_extract, stdout);
+            multiputs(docs_extract, stdout);
             break;
         case COMMAND_HELP:
-            fputs(docs_help, stdout);
+            multiputs(docs_help, stdout);
             break;
     }
 }
@@ -830,7 +839,7 @@ command_help(struct optparse *options)
 static void
 print_usage(FILE *f)
 {
-    fputs(docs_usage, f);
+    multiputs(docs_usage, f);
 }
 
 int

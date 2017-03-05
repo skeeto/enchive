@@ -1,56 +1,61 @@
-static const char docs_usage[] =
-"usage enchive [--random-device <file>]\n"
-"              [-p|--pubkey <file>] [-s|--seckey <file>]\n"
-"              <command> [args]\n"
-"\n"
-"Commands (unique prefixes accepted):\n"
-"  keygen      generate a new master keypair\n"
-"  archive     archive using the public key\n"
-"  extract     extract from an archive using the secret key\n"
-"  help        get help on a specific topic\n"
-"\n"
-"  --random-device <file> select the entropy source [/dev/urandom]\n"
-"  --pubkey <file>, -p    set the public key file [~/.enchive.pub]\n"
-"  --seckey <file>, -s    set the secret key file [~/.enchive.sec]\n"
-"\n"
-"Enchive archives files by encrypting them to yourself using your\n"
-"public key. It uses ChaCha20, Curve25519, and SHA-224.\n";
+static const char *docs_usage[] = {
+"usage enchive [--random-device <file>]",
+"              [-p|--pubkey <file>] [-s|--seckey <file>]",
+"              <command> [args]",
+"",
+"Commands (unique prefixes accepted):",
+"  keygen      generate a new master keypair",
+"  archive     archive using the public key",
+"  extract     extract from an archive using the secret key",
+"  help        get help on a specific topic",
+"",
+"  --random-device <file> select the entropy source [/dev/urandom]",
+"  --pubkey <file>, -p    set the public key file [~/.enchive.pub]",
+"  --seckey <file>, -s    set the secret key file [~/.enchive.sec]",
+"",
+"Enchive archives files by encrypting them to yourself using your",
+"public key. It uses ChaCha20, Curve25519, and SHA-224.",
+0};
 
-static const char docs_keygen[] =
-"usage: enchive keygen [-d|--derive[=count]] [-e|--edit] [-f|--force]\n"
-"                      [-p|--plain] [-k|--iterations count]\n"
-"  Generate a brand new keypair.\n"
-"\n"
-"  --derive[=<n>]     derive secret key from a passphrase [24]\n"
-"  --edit             edit the protection on an existing key\n"
-"  --iterations <n>   iterations for protection key derivation [20]\n"
-"  --force, -f        overwrite any existing keys (default: no clobber)\n"
-"  --plain, -u        don't encrypt the secret key with a protection key\n"
-"\n"
-"The global --pubkey and --seckey options select the filenames.\n";
+static const char *docs_keygen[] = {
+"usage: enchive keygen [-d|--derive[=count]] [-e|--edit] [-f|--force]",
+"                      [-p|--plain] [-k|--iterations count]",
+"  Generate a brand new keypair.",
+"",
+"  --derive[=<n>]     derive secret key from a passphrase [24]",
+"  --edit             edit the protection on an existing key",
+"  --iterations <n>   iterations for protection key derivation [20]",
+"  --force, -f        overwrite any existing keys (default: no clobber)",
+"  --plain, -u        don't encrypt the secret key with a protection key",
+"",
+"The global --pubkey and --seckey options select the filenames.",
+0};
 
-static const char docs_archive[] =
-"usage: enchive archive [input [output]]\n"
-"  Encrypt a single file for archival (only requires public key).\n"
-"\n"
-"  --delete, -d       delete input file after successful encryption\n"
-"\n"
-"If no output filename is given, an '.enchive' suffix is given to\n"
-"the input filename. The original file is untouched. If no\n"
-"filenames are given, Enchive will encrypt standard input to\n"
-"standard output.\n" ;
+static const char *docs_archive[] = {
+"usage: enchive archive [input [output]]",
+"  Encrypt a single file for archival (only requires public key).",
+"",
+"  --delete, -d       delete input file after successful encryption",
+"",
+"If no output filename is given, an '.enchive' suffix is given to",
+"the input filename. The original file is untouched. If no",
+"filenames are given, Enchive will encrypt standard input to",
+"standard output.",
+0};
 
-static const char docs_extract[] =
-"usage: enchive extract [input [output]]\n"
-"  Extract a single file from archival (requires secret key).\n"
-"\n"
-"  --delete, -d       delete input file after successful decryption\n"
-"\n"
-"If no output filename is given, the '.enchive' suffix is removed\n"
-"from the input filename. It is an error for the input to lack an\n"
-".enchive suffix. If no filenames are given, Enchive will dencrypt\n"
-"standard input to standard output.\n";
+static const char *docs_extract[] = {
+"usage: enchive extract [input [output]]",
+"  Extract a single file from archival (requires secret key).",
+"",
+"  --delete, -d       delete input file after successful decryption",
+"",
+"If no output filename is given, the '.enchive' suffix is removed",
+"from the input filename. It is an error for the input to lack an",
+".enchive suffix. If no filenames are given, Enchive will dencrypt",
+"standard input to standard output.",
+0};
 
-static const char docs_help[] =
-"usage: enchive help [command]\n"
-"  Provide help on a specific command\n";
+static const char *docs_help[] = {
+"usage: enchive help [command]",
+"  Provide help on a specific command",
+0};
