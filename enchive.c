@@ -302,7 +302,7 @@ get_passphrase(char *buf, size_t len, char *prompt)
 
 /* fallback to standard open */
 static FILE *
-secure_creat(char *file)
+secure_creat(const char *file)
 {
     return fopen(file, "wb");
 }
@@ -310,7 +310,7 @@ secure_creat(char *file)
 #else
 /* fallback to standard open */
 static FILE *
-secure_creat(char *file)
+secure_creat(const char *file)
 {
     return fopen(file, "wb");
 }
