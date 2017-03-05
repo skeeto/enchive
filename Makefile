@@ -15,7 +15,7 @@ curve25519-donna.o: curve25519-donna.c
 sha256.o: sha256.c
 
 enchive-cli.c: $(sources) $(headers)
-	cat $(headers) $(sources) | sed -r 's/^#include +".+//g' > $@
+	cat $(headers) $(sources) | sed -r 's@^(#include +".+)@/* \1 */@g' > $@
 
 amalgamation: enchive-cli.c
 
