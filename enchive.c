@@ -12,7 +12,6 @@
 
 int curve25519_donna(u8 *p, const u8 *s, const u8 *b);
 
-
 #define PASSPHRASE_MAX 1024
 
 /* Global options. */
@@ -26,12 +25,15 @@ static int global_agent_timeout = 0;
 #endif
 
 static struct {
-    char *name;
+    const char *name;
     FILE *file;
 } cleanup[2];
 
+/**
+ * Register a file for deletion should fatal() be called.
+ */
 static void
-cleanup_register(FILE *file, char *name)
+cleanup_register(FILE *file, const char *name)
 {
     if (file) {
         unsigned i;
@@ -44,6 +46,9 @@ cleanup_register(FILE *file, char *name)
     abort();
 }
 
+/**
+ * Print a message, cleanup, and exit the program with a failure code.
+ */
 static void
 fatal(const char *fmt, ...)
 {
@@ -61,6 +66,9 @@ fatal(const char *fmt, ...)
     exit(EXIT_FAILURE);
 }
 
+/**
+ * Print a non-fatal warning message.
+ */
 static void
 warning(const char *fmt, ...)
 {
@@ -202,6 +210,9 @@ agent_run(const u8 *key, const u8 *id)
 }
 #endif
 
+/**
+ * Read a passphrase without any fanfare (fallback).
+ */
 static void
 get_passphrase_dumb(char *buf, size_t len, char *prompt)
 {
@@ -216,13 +227,19 @@ get_passphrase_dumb(char *buf, size_t len, char *prompt)
         buf[passlen - 1] = 0;
 }
 
+/**
+ * Create/truncate a file with paranoid permissions using OS calls.
+ * Abort the program if the entropy could not be retrieved.
+ */
+static FILE *secure_creat(const char *file);
+
 #if defined(__unix__) || defined(__APPLE__)
 #include <fcntl.h>
 #include <unistd.h>
 #include <termios.h>
 
 static FILE *
-secure_creat(char *file)
+secure_creat(const char *file)
 {
     int fd = open(file, O_CREAT | O_WRONLY, 00600);
     if (fd == -1)
@@ -308,7 +325,7 @@ get_passphrase(char *buf, size_t len, char *prompt)
 #endif
 
 /**
- * Derive a key from null-terminated passphrase into buf.
+ * Derive a 32-byte key from null-terminated passphrase into buf.
  * Optionally provide an 8-byte salt.
  */
 static void
@@ -329,6 +346,11 @@ key_derive(char *passphrase, u8 *buf, unsigned long iterations, u8 *salt)
         sha256_final(ctx, buf);
     }
 }
+
+/**
+ * Get secure entropy suitable for key generation from OS.
+ */
+static void secure_entropy(void *buf, size_t len);
 
 #if defined(__unix__) || defined(__APPLE__)
 static char *global_random_device = STR(ENCHIVE_RANDOM_DEVICE);
@@ -360,8 +382,9 @@ secure_entropy(void *buf, size_t len)
 }
 #endif
 
-
-
+/**
+ * Generate a brand new Curve25519 secret key from system entropy.
+ */
 static void
 generate_secret(u8 *s)
 {
@@ -371,6 +394,9 @@ generate_secret(u8 *s)
     s[31] |= 64;
 }
 
+/**
+ * Generate a Curve25519 public key from a secret key.
+ */
 static void
 compute_public(u8 *p, const u8 *s)
 {
@@ -378,12 +404,18 @@ compute_public(u8 *p, const u8 *s)
     curve25519_donna(p, s, b);
 }
 
+/**
+ * Compute a shared secret from our secret key and their public key.
+ */
 static void
 compute_shared(u8 *sh, const u8 *s, const u8 *p)
 {
     curve25519_donna(sh, s, p);
 }
 
+/**
+ * Encrypt from file to file using key/iv, aborting on any error.
+ */
 static void
 symmetric_encrypt(FILE *in, FILE *out, u8 *key, u8 *iv)
 {
@@ -422,6 +454,9 @@ symmetric_encrypt(FILE *in, FILE *out, u8 *key, u8 *iv)
         fatal("error flushing to ciphertext file");
 }
 
+/**
+ * Decrypt from file to file using key/iv, aborting on any error.
+ */
 static void
 symmetric_decrypt(FILE *in, FILE *out, u8 *key, u8 *iv)
 {
@@ -474,6 +509,9 @@ symmetric_decrypt(FILE *in, FILE *out, u8 *key, u8 *iv)
 
 }
 
+/**
+ * Prepend the HOME directory to a filename, aborting if it doesn't fit.
+ */
 static void
 prepend_home(char *buf, size_t buflen, char *file)
 {
@@ -492,6 +530,9 @@ prepend_home(char *buf, size_t buflen, char *file)
     memcpy(buf + homelen + 1, file, filelen + 1);
 }
 
+/**
+ * Return the default public key file (static buffer).
+ */
 static char *
 default_pubfile(void)
 {
@@ -500,6 +541,9 @@ default_pubfile(void)
     return buf;
 }
 
+/**
+ * Return the default public key file (static buffer).
+ */
 static char *
 default_secfile(void)
 {
@@ -508,6 +552,9 @@ default_secfile(void)
     return buf;
 }
 
+/**
+ * Dump the public key to a file, aborting on error.
+ */
 static void
 write_pubkey(char *file, u8 *key)
 {
@@ -521,20 +568,37 @@ write_pubkey(char *file, u8 *key)
         fatal("failed to flush key file -- %s", file);
 }
 
+/* Layout of secret key file */
+#define SECFILE_IV            0
+#define SECFILE_ITERATIONS    8  /* big endian */
+#define SECFILE_PROTECT_HASH  12
+#define SECFILE_SECKEY        32
+
+/**
+ * Write the secret key to a file, encrypting it if necessary.
+ *
+ */
 static void
-write_seckey(char *file, u8 *seckey, unsigned long iterations)
+write_seckey(const char *file, const u8 *seckey, unsigned long iterations)
 {
     FILE *secfile;
     chacha_ctx cha[1];
     SHA256_CTX sha[1];
-    u8 buf[8 + 4 + 20 + 32] = {0};
-    u8 key[32];
+    u8 buf[8 + 4 + 20 + 32] = {0}; /* entire file contents */
+    u8 protect[32];
+
+    u8 *buf_iv           = buf + SECFILE_IV;
+    u8 *buf_iterations   = buf + SECFILE_ITERATIONS;
+    u8 *buf_protect_hash = buf + SECFILE_PROTECT_HASH;
+    u8 *buf_seckey       = buf + SECFILE_SECKEY;
 
     if (iterations) {
+        /* Prompt for a passphrase. */
         char pass[2][PASSPHRASE_MAX];
         get_passphrase(pass[0], sizeof(pass[0]),
                        "passphrase (empty for none): ");
         if (!pass[0][0]) {
+            /* Nevermind. */
             iterations = 0;
         }  else {
             get_passphrase(pass[1], sizeof(pass[0]),
@@ -543,26 +607,28 @@ write_seckey(char *file, u8 *seckey, unsigned long iterations)
                 fatal("passphrases don't match");
 
             /* Generate an IV to double as salt. */
-            secure_entropy(buf, 8);
+            secure_entropy(buf_iv, 8);
 
-            key_derive(pass[0], key, iterations, buf);
-            buf[8]  = iterations >> 24;
-            buf[9]  = iterations >> 16;
-            buf[10] = iterations >>  8;
-            buf[11] = iterations >>  0;
+            key_derive(pass[0], protect, iterations, buf_iv);
+            buf_iterations[0] = iterations >> 24;
+            buf_iterations[1] = iterations >> 16;
+            buf_iterations[2] = iterations >>  8;
+            buf_iterations[3] = iterations >>  0;
 
             sha256_init(sha);
-            sha256_update(sha, key, 32);
-            sha256_final(sha, buf + 12);
+            sha256_update(sha, protect, sizeof(protect));
+            sha256_final(sha, buf_protect_hash);
         }
     }
 
     if (iterations) {
-        chacha_keysetup(cha, key, 256);
-        chacha_ivsetup(cha, buf);
-        chacha_encrypt_bytes(cha, seckey, buf + 32, 32);
+        /* Encrypt using key derived from passphrase. */
+        chacha_keysetup(cha, protect, 256);
+        chacha_ivsetup(cha, buf_iv);
+        chacha_encrypt_bytes(cha, seckey, buf_seckey, 32);
     } else {
-        memcpy(buf + 32, seckey, 32);
+        /* Copy key to output buffer. */
+        memcpy(buf_seckey, seckey, 32);
     }
 
     secfile = secure_creat(file);
@@ -575,8 +641,11 @@ write_seckey(char *file, u8 *seckey, unsigned long iterations)
         fatal("failed to flush key file -- %s", file);
 }
 
+/**
+ * Load the public key from the file.
+ */
 static void
-load_pubkey(char *file, u8 *key)
+load_pubkey(const char *file, u8 *key)
 {
     FILE *f = fopen(file, "rb");
     if (!f)
@@ -586,17 +655,33 @@ load_pubkey(char *file, u8 *key)
     fclose(f);
 }
 
+/**
+ * Attempt to load and decrypt the secret key stored in a file.
+ *
+ * The they key is encrypted, attempt to query a key agent. If that
+ * fails (no agent, bad key) prompt the user for a passphrase. If that
+ * fails (wrong passphrase), abort the program.
+ *
+ * If "global_agent_timeout" is non-zero, start a key agent if
+ * necessary.
+ */
 static void
-load_seckey(char *file, u8 *seckey)
+load_seckey(const char *file, u8 *seckey)
 {
     FILE *secfile;
     chacha_ctx cha[1];
     SHA256_CTX sha[1];
-    u8 buf[8 + 4 + 20 + 32];
-    u8 empty[8] = {0};
-    u8 protect_hash[SHA256_BLOCK_SIZE];
-    u8 protect[32];
+    u8 buf[8 + 4 + 20 + 32];            /* entire key file contents */
+    u8 empty[8] = {0};                  /* dummy IV when unencrypted */
+    u8 protect[32];                     /* protection key */
+    u8 protect_hash[SHA256_BLOCK_SIZE]; /* hash of protection key */
 
+    u8 *buf_iv           = buf + SECFILE_IV;
+    u8 *buf_iterations   = buf + SECFILE_ITERATIONS;
+    u8 *buf_protect_hash = buf + SECFILE_PROTECT_HASH;
+    u8 *buf_seckey       = buf + SECFILE_SECKEY;
+
+    /* Read the entire file into buf. */
     secfile = fopen(file, "rb");
     if (!secfile)
         fatal("failed to open key file for reading -- %s", file);
@@ -604,41 +689,49 @@ load_seckey(char *file, u8 *seckey)
         fatal("failed to read key file -- %s", file);
     fclose(secfile);
 
-    if (memcmp(buf, empty, sizeof(empty)) != 0) {
-        int agent_success = agent_read(protect, buf);
+    if (memcmp(buf_iv, empty, sizeof(empty)) != 0) {
+        /* Secret key is encrypted. */
+
+        int agent_success = agent_read(protect, buf_iv);
         if (agent_success) {
+            /* Check validity of agent key. */
             sha256_init(sha);
             sha256_update(sha, protect, 32);
             sha256_final(sha, protect_hash);
-            agent_success = !memcmp(protect_hash, buf + 12, 20);
+            agent_success = !memcmp(protect_hash, buf_protect_hash, 20);
         }
 
         if (!agent_success) {
+            /* Ask user for passphrase. */
             char pass[PASSPHRASE_MAX];
             unsigned long iterations =
-                ((unsigned long)buf[8]  << 24) |
-                ((unsigned long)buf[9]  << 16) |
-                ((unsigned long)buf[10] <<  8) |
-                ((unsigned long)buf[11] <<  0);
+                ((unsigned long)buf_iterations[0] << 24) |
+                ((unsigned long)buf_iterations[1] << 16) |
+                ((unsigned long)buf_iterations[2] <<  8) |
+                ((unsigned long)buf_iterations[3] <<  0);
             get_passphrase(pass, sizeof(pass), "passphrase: ");
 
-            key_derive(pass, protect, iterations, buf);
+            key_derive(pass, protect, iterations, buf_iv);
 
+            /* Validate passphrase. */
             sha256_init(sha);
             sha256_update(sha, protect, 32);
             sha256_final(sha, protect_hash);
-            if (memcmp(protect_hash, buf + 12, 20) != 0)
+            if (memcmp(protect_hash, buf_protect_hash, 20) != 0)
                 fatal("wrong passphrase");
         }
 
+        /* We have the correct protection key. Start the agent? */
         if (!agent_success && global_agent_timeout)
-            agent_run(protect, buf);
+            agent_run(protect, buf_iv);
 
+        /* Decrypt the key into the output. */
         chacha_keysetup(cha, protect, 256);
-        chacha_ivsetup(cha, buf);
-        chacha_encrypt_bytes(cha, buf + 32, seckey, 32);
+        chacha_ivsetup(cha, buf_iv);
+        chacha_encrypt_bytes(cha, buf_seckey, seckey, 32);
     } else {
-        memcpy(seckey, buf + 32, 32);
+        /* Key is unencrypted, copy into output. */
+        memcpy(seckey, buf_seckey, 32);
     }
 }
 
@@ -786,6 +879,9 @@ command_keygen(struct optparse *options)
         if (strcmp(pass[0], pass[1]) != 0)
             fatal("passphrases don't match");
         key_derive(pass[0], secret, seckey_derive_iterations, 0);
+        secret[0] &= 248;
+        secret[31] &= 127;
+        secret[31] |= 64;
     } else {
         /* Generate secret key from entropy. */
         generate_secret(secret);
@@ -840,6 +936,7 @@ command_archive(struct optparse *options)
 
     outfile = optparse_arg(options);
     if (!outfile && infile) {
+        /* Generate an output filename. */
         static const char suffix[] = ".enchive";
         size_t len = strlen(infile);
         outfile = malloc(len + sizeof(suffix));
@@ -859,6 +956,7 @@ command_archive(struct optparse *options)
     generate_secret(esecret);
     compute_public(epublic, esecret);
 
+    /* Create shared secret between ephemeral key and master key. */
     compute_shared(shared, esecret, public);
     secure_entropy(iv, sizeof(iv));
     if (!fwrite(iv, sizeof(iv), 1, out))
@@ -919,6 +1017,7 @@ command_extract(struct optparse *options)
 
     outfile = optparse_arg(options);
     if (!outfile && infile) {
+        /* Generate an output filename. */
         static const char suffix[] = ".enchive";
         size_t slen = sizeof(suffix) - 1;
         size_t len = strlen(infile);
