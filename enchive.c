@@ -12,8 +12,6 @@
 
 int curve25519_donna(u8 *p, const u8 *s, const u8 *b);
 
-#define PASSPHRASE_MAX 1024
-
 /* Global options. */
 static char *global_pubkey = 0;
 static char *global_seckey = 0;
@@ -594,7 +592,7 @@ write_seckey(const char *file, const u8 *seckey, unsigned long iterations)
 
     if (iterations) {
         /* Prompt for a passphrase. */
-        char pass[2][PASSPHRASE_MAX];
+        char pass[2][ENCHIVE_PASSPHRASE_MAX];
         get_passphrase(pass[0], sizeof(pass[0]),
                        "passphrase (empty for none): ");
         if (!pass[0][0]) {
@@ -703,7 +701,7 @@ load_seckey(const char *file, u8 *seckey)
 
         if (!agent_success) {
             /* Ask user for passphrase. */
-            char pass[PASSPHRASE_MAX];
+            char pass[ENCHIVE_PASSPHRASE_MAX];
             unsigned long iterations =
                 ((unsigned long)buf_iterations[0] << 24) |
                 ((unsigned long)buf_iterations[1] << 16) |
@@ -871,7 +869,7 @@ command_keygen(struct optparse *options)
         load_seckey(secfile, secret);
     } else if (derive) {
         /* Generate secret key from passphrase. */
-        char pass[2][PASSPHRASE_MAX];
+        char pass[2][ENCHIVE_PASSPHRASE_MAX];
         get_passphrase(pass[0], sizeof(pass[0]),
                        "secret key passphrase: ");
         get_passphrase(pass[1], sizeof(pass[0]),

@@ -147,6 +147,10 @@ at run time with `--iterations`.
 Power-of-two exponent for secret key derivation. Can be configured at
 run time with the optional argument to `--derive`.
 
+### `ENCHIVE_PASSPHRASE_MAX`
+
+Maximum passphrase size in bytes, including null terminator.
+
 
 [myths]: http://www.2uo.de/myths-about-urandom/
 [djb]: https://blog.cr.yp.to/20140205-entropy.html

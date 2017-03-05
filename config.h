@@ -39,6 +39,10 @@
 #  define ENCHIVE_AGENT_DEFAULT_ENABLED 0
 #endif
 
+#ifndef ENCHIVE_PASSPHRASE_MAX
+#  define ENCHIVE_PASSPHRASE_MAX 1024
+#endif
+
 /* Required for correct builds */
 
 #ifndef _POSIX_SOURCE
