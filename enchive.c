@@ -208,6 +208,8 @@ agent_run(const u8 *key, const u8 *id)
 }
 #endif
 
+static void get_passphrase(char *buf, size_t len, char *prompt);
+
 /**
  * Read a passphrase without any fanfare (fallback).
  */
@@ -225,25 +227,10 @@ get_passphrase_dumb(char *buf, size_t len, char *prompt)
         buf[passlen - 1] = 0;
 }
 
-/**
- * Create/truncate a file with paranoid permissions using OS calls.
- * Abort the program if the entropy could not be retrieved.
- */
-static FILE *secure_creat(const char *file);
-
 #if defined(__unix__) || defined(__APPLE__)
 #include <fcntl.h>
 #include <unistd.h>
 #include <termios.h>
-
-static FILE *
-secure_creat(const char *file)
-{
-    int fd = open(file, O_CREAT | O_WRONLY, 00600);
-    if (fd == -1)
-        return 0;
-    return fdopen(fd, "wb");
-}
 
 static void
 get_passphrase(char *buf, size_t len, char *prompt)
@@ -300,25 +287,37 @@ get_passphrase(char *buf, size_t len, char *prompt)
     }
 }
 
-/* fallback to standard open */
-static FILE *
-secure_creat(const char *file)
-{
-    return fopen(file, "wb");
-}
-
 #else
-/* fallback to standard open */
-static FILE *
-secure_creat(const char *file)
-{
-    return fopen(file, "wb");
-}
-
 static void
 get_passphrase(char *buf, size_t len, char *prompt)
 {
     get_passphrase_dumb(buf, len, prompt);
+}
+#endif
+
+/**
+ * Create/truncate a file with paranoid permissions using OS calls.
+ * Abort the program if the entropy could not be retrieved.
+ */
+static FILE *secure_creat(const char *file);
+
+#if defined(__unix__) || defined(__APPLE__)
+#include <unistd.h>
+
+static FILE *
+secure_creat(const char *file)
+{
+    int fd = open(file, O_CREAT | O_WRONLY, 00600);
+    if (fd == -1)
+        return 0;
+    return fdopen(fd, "wb");
+}
+
+#else
+static FILE *
+secure_creat(const char *file)
+{
+    return fopen(file, "wb");
 }
 #endif
 
