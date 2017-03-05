@@ -160,16 +160,24 @@ get_passphrase(char *buf, size_t len, char *prompt)
 }
 #endif
 
+/**
+ * Derive a key from null-terminated passphrase into buf.
+ * Optionally provide an 8-byte salt.
+ */
 static void
-key_derive(char *key, u8 *buf, unsigned long iterations)
+key_derive(char *passphrase, u8 *buf, unsigned long iterations, u8 *salt)
 {
+    size_t len = strlen(passphrase);
     unsigned long i;
     SHA256_CTX ctx[1];
     sha256_init(ctx);
+    sha256_update(ctx, (u8 *)passphrase, len);
+    if (salt)
+        sha256_update(ctx, salt, 8);
     sha256_final(ctx, buf);
     for (i = 0; i < iterations; i++) {
         sha256_init(ctx);
-        sha256_update(ctx, (void *)key, strlen(key));
+        sha256_update(ctx, (u8 *)passphrase, len);
         sha256_update(ctx, buf, sizeof(buf));
         sha256_final(ctx, buf);
     }
@@ -387,7 +395,10 @@ write_seckey(char *file, u8 *seckey, unsigned long iterations)
             if (strcmp(pass[0], pass[1]) != 0)
                 fatal("passphrases don't match");
 
-            key_derive(pass[0], key, iterations);
+            /* Generate an IV to double as salt. */
+            secure_entropy(buf, 8);
+
+            key_derive(pass[0], key, iterations, buf);
             buf[8]  = iterations >> 24;
             buf[9]  = iterations >> 16;
             buf[10] = iterations >>  8;
@@ -396,8 +407,6 @@ write_seckey(char *file, u8 *seckey, unsigned long iterations)
             sha256_init(sha);
             sha256_update(sha, key, 32);
             sha256_final(sha, buf + 12);
-
-            secure_entropy(buf, 8);
         }
     }
 
@@ -457,7 +466,7 @@ load_seckey(char *file, u8 *seckey)
             ((unsigned long)buf[11] <<  0);
         get_passphrase(pass, sizeof(pass), "passphrase: ");
 
-        key_derive(pass, key, iterations);
+        key_derive(pass, key, iterations, buf);
 
         sha256_init(sha);
         sha256_update(sha, key, 32);
@@ -616,7 +625,7 @@ command_keygen(struct optparse *options)
                        "secret key passphrase (repeat): ");
         if (strcmp(pass[0], pass[1]) != 0)
             fatal("passphrases don't match");
-        key_derive(pass[0], secret, seckey_derive_iterations);
+        key_derive(pass[0], secret, seckey_derive_iterations, 0);
     } else {
         /* Generate secret key from entropy. */
         generate_secret(secret);
