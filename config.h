@@ -1,7 +1,30 @@
-#ifndef MACHINE_H
-#define MACHINE_H
+#ifndef CONFIG_H
+#define CONFIG_H
 
-#define _POSIX_SOURCE
+#ifndef ENCHIVE_RANDOM_DEVICE
+#  define ENCHIVE_RANDOM_DEVICE "/dev/urandom"
+#endif
+
+#ifndef ENCHIVE_KEY_DERIVE_ITERATIONS
+#  define ENCHIVE_KEY_DERIVE_ITERATIONS 20
+#endif
+
+#ifndef ENCHIVE_SECKEY_DERIVE_ITERATIONS
+#  define ENCHIVE_SECKEY_DERIVE_ITERATIONS 24
+#endif
+
+#ifndef ENCHIVE_OPTION_RANDOM_DEVICE
+#  if defined(__unix__) || defined(__APPLE__)
+#    define ENCHIVE_OPTION_RANDOM_DEVICE 1
+#  else
+#    define ENCHIVE_OPTION_RANDOM_DEVICE 0
+#  endif
+#endif
+
+#ifndef _POSIX_SOURCE
+#  define _POSIX_SOURCE
+#endif
+
 #define OPTPARSE_IMPLEMENTATION
 
 #include <stdint.h>
@@ -18,4 +41,4 @@ typedef uint64_t u64;
 typedef int32_t s32;
 typedef int64_t limb;
 
-#endif /* MACHINE_H */
+#endif /* CONFIG_H */

@@ -1,3 +1,4 @@
+#include "config.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -11,13 +12,10 @@
 
 int curve25519_donna(u8 *p, const u8 *s, const u8 *b);
 
-#define KEY_DERIVE_ITERATIONS    20
-#define SECKEY_DERIVE_ITERATIONS 24
 
 #define PASSPHRASE_MAX 1024
 
 /* Global options. */
-static char *global_random_device = "/dev/urandom";
 static char *global_pubkey = 0;
 static char *global_seckey = 0;
 
@@ -178,6 +176,8 @@ key_derive(char *key, u8 *buf, unsigned long iterations)
 }
 
 #if defined(__unix__) || defined(__APPLE__)
+static char *global_random_device = ENCHIVE_RANDOM_DEVICE;
+
 static void
 secure_entropy(void *buf, size_t len)
 {
@@ -535,8 +535,10 @@ command_keygen(struct optparse *options)
     int derive = 0;
     int edit = 0;
     int protect = 1;
-    unsigned long key_derive_iterations = 1UL << KEY_DERIVE_ITERATIONS;
-    unsigned long seckey_derive_iterations = 1UL << SECKEY_DERIVE_ITERATIONS;
+    unsigned long key_derive_iterations =
+        1UL << ENCHIVE_KEY_DERIVE_ITERATIONS;
+    unsigned long seckey_derive_iterations =
+        1UL << ENCHIVE_SECKEY_DERIVE_ITERATIONS;
 
     int option;
     while ((option = optparse_long(options, keygen, 0)) != -1) {
@@ -842,7 +844,9 @@ int
 main(int argc, char **argv)
 {
     static const struct optparse_long global[] = {
+#if ENCHIVE_OPTION_RANDOM_DEVICE
         {"random-device", 'r', OPTPARSE_REQUIRED},
+#endif
         {"pubkey",        'p', OPTPARSE_REQUIRED},
         {"seckey",        's', OPTPARSE_REQUIRED},
         {0, 0, 0}
@@ -857,12 +861,11 @@ main(int argc, char **argv)
 
    while ((option = optparse_long(options, global, 0)) != -1) {
         switch (option) {
+#if ENCHIVE_OPTION_RANDOM_DEVICE
             case 'r':
-                #ifdef _WIN32
-                fprintf(stderr, "warning: --random-device ignored\n");
-                #endif
                 global_random_device = options->optarg;
                 break;
+#endif
             case 'p':
                 global_pubkey = options->optarg;
                 break;

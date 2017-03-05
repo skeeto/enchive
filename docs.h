@@ -1,6 +1,8 @@
 static const char *docs_usage[] = {
-"usage enchive [--random-device <file>]",
-"              [-p|--pubkey <file>] [-s|--seckey <file>]",
+"usage enchive [-p|--pubkey <file>] [-s|--seckey <file>]",
+#if ENCHIVE_OPTION_RANDOM_DEVICE
+"              [--random-device <file>]",
+#endif
 "              <command> [args]",
 "",
 "Commands (unique prefixes accepted):",
