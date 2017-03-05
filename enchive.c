@@ -148,15 +148,16 @@ agent_run(const u8 *key, const u8 *iv)
 
     umask(~(S_IRUSR | S_IWUSR));
     if (bind(pfd.fd, (struct sockaddr *)&addr, sizeof(addr))) {
-        warning("could not bind agent socket %s -- %s",
-                addr.sun_path, strerror(errno));
-        return 0;
+        if (errno != EADDRINUSE)
+            warning("could not bind agent socket %s -- %s",
+                    addr.sun_path, strerror(errno));
+        exit(EXIT_FAILURE);
     }
 
     if (listen(pfd.fd, SOMAXCONN)) {
         if (errno != EADDRINUSE)
             fatal("could not listen on agent socket -- %s", strerror(errno));
-        exit(EXIT_SUCCESS);
+        exit(EXIT_FAILURE);
     }
 
     close(2);
@@ -605,6 +606,13 @@ load_seckey(char *file, u8 *seckey)
 
     if (memcmp(buf, empty, sizeof(empty)) != 0) {
         int agent_success = agent_read(protect, buf);
+        if (agent_success) {
+            sha256_init(sha);
+            sha256_update(sha, protect, 32);
+            sha256_final(sha, protect_hash);
+            agent_success = !memcmp(protect_hash, buf + 12, 20);
+        }
+
         if (!agent_success) {
             char pass[PASSPHRASE_MAX];
             unsigned long iterations =
@@ -622,6 +630,7 @@ load_seckey(char *file, u8 *seckey)
             if (memcmp(protect_hash, buf + 12, 20) != 0)
                 fatal("wrong passphrase");
         }
+
         if (!agent_success && global_agent_timeout)
             agent_run(protect, buf);
 
