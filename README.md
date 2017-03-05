@@ -101,3 +101,55 @@ The process for decrypting a file:
 4. Initialize ChaCha20 with the shared secret as the key.
 5. Decrypt the ciphertext using ChaCha20.
 6. Verify `sha256(key + sha256(plaintext))`.
+
+## Compile-time configuration
+
+Various options and defaults can be configured at compile time using C
+defines (`-D...`). These also apply to the amalgamation build.
+
+### `ENCHIVE_RANDOM_DEVICE`
+
+For unix-like systems, this is the default source of entropy when
+creating keys and IVs. The default value is `/dev/urandom`. You could
+set this to `/dev/random`, though that's [pointless][djb] and [a waste
+of time][myths]. It can be changed at run time with `--random-device`.
+
+In the future, Enchive may first try `getrandom(2)` / `getentropy(2)`.
+
+### `ENCHIVE_OPTION_RANDOM_DEVICE`
+
+Whether or not the `--random-device` option should be available. This
+option is 0 by default on Windows, where Enchive always uses a
+[Cryptographic Service Provider][csp].
+
+### `ENCHIVE_OPTION_AGENT`
+
+Whether to expose the `--agent` and `--no-agent` option. This option
+is 0 by default on Windows since agents are unsupported.
+
+### `ENCHIVE_AGENT_TIMEOUT`
+
+The default agent timeout in seconds. This can be configured at run
+time with an optional argument to `--agent`.
+
+### `ENCHIVE_AGENT_DEFAULT_ENABLED`
+
+Whether or not to enable the agent by default. This can be explicitly
+overridden at run time with `--agent` and `--no-agent`.
+
+### `ENCHIVE_KEY_DERIVE_ITERATIONS`
+
+Power-of-two exponent for protection key derivation. Can be configured
+at run time with `--iterations`.
+
+### `ENCHIVE_SECKEY_DERIVE_ITERATIONS`
+
+Power-of-two exponent for secret key derivation. Can be configured at
+run time with the optional argument to `--derive`.
+
+
+[myths]: http://www.2uo.de/myths-about-urandom/
+[djb]: https://blog.cr.yp.to/20140205-entropy.html
+[getrandom]: https://manpages.debian.org/testing/manpages-dev/getrandom.2.en.html
+[getentropy]: http://man.openbsd.org/OpenBSD-current/man2/getentropy.2
+[csp]: https://msdn.microsoft.com/en-us/library/windows/desktop/aa380246(v=vs.85).aspx
