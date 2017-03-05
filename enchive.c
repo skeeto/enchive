@@ -19,6 +19,12 @@ int curve25519_donna(u8 *p, const u8 *s, const u8 *b);
 static char *global_pubkey = 0;
 static char *global_seckey = 0;
 
+#if ENCHIVE_AGENT_DEFAULT_ENABLED
+static int global_agent_timeout = ENCHIVE_AGENT_TIMEOUT;
+#else
+static int global_agent_timeout = 0;
+#endif
+
 static struct {
     char *name;
     FILE *file;
@@ -56,10 +62,150 @@ fatal(const char *fmt, ...)
 }
 
 static void
+warning(const char *fmt, ...)
+{
+    va_list ap;
+    va_start(ap, fmt);
+    fprintf(stderr, "warning: ");
+    vfprintf(stderr, fmt, ap);
+    fputc('\n', stderr);
+}
+
+#if ENCHIVE_OPTION_AGENT
+#include <poll.h>
+#include <unistd.h>
+#include <sys/un.h>
+#include <sys/stat.h>
+#include <sys/socket.h>
+
+static int
+agent_addr(struct sockaddr_un *addr, const u8 *iv)
+{
+    char *tmpdir;
+    addr->sun_family = AF_UNIX;
+    if (!(tmpdir = getenv("TMPDIR")))
+        tmpdir = "/tmp";
+    if (strlen(tmpdir) + 40 + 1 > sizeof(addr->sun_path)) {
+        warning("$TMPDIR too long -- %s", tmpdir);
+        return 0;
+    } else {
+        sprintf(addr->sun_path, "%s/%02x%02x%02x%02x%02x%02x%02x%02x", tmpdir,
+                iv[0], iv[1], iv[2], iv[3], iv[4], iv[5], iv[6], iv[7]);
+        return 1;
+    }
+}
+
+/**
+ * Read the protection key from a unix socket identified by its IV.
+ */
+static int
+agent_read(u8 *key, const u8 *iv)
+{
+    int success;
+    struct sockaddr_un addr;
+    int fd = socket(AF_UNIX, SOCK_STREAM, 0);
+    if (!agent_addr(&addr, iv)) {
+        close(fd);
+        return 0;
+    }
+    if (connect(fd, (struct sockaddr *)&addr, sizeof(addr))) {
+        close(fd);
+        return 0;
+    }
+    success = read(fd, key, 32) == 32;
+    close(fd);
+    return success;
+}
+
+/**
+ * Serve the protection key on a unix socket identified by its IV.
+ */
+static int
+agent_run(const u8 *key, const u8 *iv)
+{
+    struct pollfd pfd = {-1, POLLIN, 0};
+    struct sockaddr_un addr;
+    pid_t pid;
+
+    pfd.fd = socket(AF_UNIX, SOCK_STREAM, 0);
+    if (pfd.fd == -1) {
+        warning("could not create agent socket");
+        return 0;
+    }
+
+    if (!agent_addr(&addr, iv))
+        return 0;
+
+    pid = fork();
+    if (pid == -1) {
+        warning("could not fork() agent -- %s", strerror(errno));
+        return 0;
+    } else if (pid != 0) {
+        return 1;
+    }
+    close(0);
+    close(1);
+
+    umask(~(S_IRUSR | S_IWUSR));
+    if (bind(pfd.fd, (struct sockaddr *)&addr, sizeof(addr))) {
+        warning("could not bind agent socket %s -- %s",
+                addr.sun_path, strerror(errno));
+        return 0;
+    }
+
+    if (listen(pfd.fd, SOMAXCONN)) {
+        if (errno != EADDRINUSE)
+            fatal("could not listen on agent socket -- %s", strerror(errno));
+        exit(EXIT_SUCCESS);
+    }
+
+    close(2);
+    for (;;) {
+        int cfd;
+        int r = poll(&pfd, 1, global_agent_timeout * 1000);
+        if (r < 0) {
+            unlink(addr.sun_path);
+            fatal("agent poll failed -- %s", strerror(errno));
+        }
+        if (r == 0) {
+            unlink(addr.sun_path);
+            fputs("info: agent timeout\n", stderr);
+            close(pfd.fd);
+            break;
+        }
+        cfd = accept(pfd.fd, 0, 0);
+        if (cfd != -1) {
+            if (write(cfd, key, 32) != 32)
+                warning("agent write failed");
+            close(cfd);
+        }
+    }
+    exit(EXIT_SUCCESS);
+}
+
+#else
+static int
+agent_read(const u8 *key, const u8 *id)
+{
+    (void)key;
+    (void)id;
+    return 0;
+}
+
+static int
+agent_run(const u8 *key, const u8 *id)
+{
+    (void)key;
+    (void)id;
+    return 0;
+}
+#endif
+
+static void
 get_passphrase_dumb(char *buf, size_t len, char *prompt)
 {
     size_t passlen;
-    fprintf(stderr, "warning: reading passphrase from stdin with echo\n");
+    warning("reading passphrase from stdin with echo");
     fputs(prompt, stderr);
     fflush(stderr);
     if (!fgets(buf, len, stdin))
@@ -447,8 +593,8 @@ load_seckey(char *file, u8 *seckey)
     SHA256_CTX sha[1];
     u8 buf[8 + 4 + 20 + 32];
     u8 empty[8] = {0};
-    u8 keyhash[SHA256_BLOCK_SIZE];
-    u8 key[32];
+    u8 protect_hash[SHA256_BLOCK_SIZE];
+    u8 protect[32];
 
     secfile = fopen(file, "rb");
     if (!secfile)
@@ -458,23 +604,28 @@ load_seckey(char *file, u8 *seckey)
     fclose(secfile);
 
     if (memcmp(buf, empty, sizeof(empty)) != 0) {
-        char pass[PASSPHRASE_MAX];
-        unsigned long iterations =
-            ((unsigned long)buf[8]  << 24) |
-            ((unsigned long)buf[9]  << 16) |
-            ((unsigned long)buf[10] <<  8) |
-            ((unsigned long)buf[11] <<  0);
-        get_passphrase(pass, sizeof(pass), "passphrase: ");
+        int agent_success = agent_read(protect, buf);
+        if (!agent_success) {
+            char pass[PASSPHRASE_MAX];
+            unsigned long iterations =
+                ((unsigned long)buf[8]  << 24) |
+                ((unsigned long)buf[9]  << 16) |
+                ((unsigned long)buf[10] <<  8) |
+                ((unsigned long)buf[11] <<  0);
+            get_passphrase(pass, sizeof(pass), "passphrase: ");
 
-        key_derive(pass, key, iterations, buf);
+            key_derive(pass, protect, iterations, buf);
 
-        sha256_init(sha);
-        sha256_update(sha, key, 32);
-        sha256_final(sha, keyhash);
-        if (memcmp(keyhash, buf + 12, 20) != 0)
-            fatal("wrong passphrase");
+            sha256_init(sha);
+            sha256_update(sha, protect, 32);
+            sha256_final(sha, protect_hash);
+            if (memcmp(protect_hash, buf + 12, 20) != 0)
+                fatal("wrong passphrase");
+        }
+        if (!agent_success && global_agent_timeout)
+            agent_run(protect, buf);
 
-        chacha_keysetup(cha, key, 256);
+        chacha_keysetup(cha, protect, 256);
         chacha_ivsetup(cha, buf);
         chacha_encrypt_bytes(cha, buf + 32, seckey, 32);
     } else {
@@ -853,6 +1004,10 @@ int
 main(int argc, char **argv)
 {
     static const struct optparse_long global[] = {
+#if ENCHIVE_OPTION_AGENT
+        {"agent",         'a', OPTPARSE_OPTIONAL},
+        {"no-agent",      'A', OPTPARSE_NONE},
+#endif
 #if ENCHIVE_OPTION_RANDOM_DEVICE
         {"random-device", 'r', OPTPARSE_REQUIRED},
 #endif
@@ -870,6 +1025,22 @@ main(int argc, char **argv)
 
    while ((option = optparse_long(options, global, 0)) != -1) {
         switch (option) {
+#if ENCHIVE_OPTION_AGENT
+            case 'a':
+                if (options->optarg) {
+                    char *arg = options->optarg;
+                    char *endptr;
+                    errno = 0;
+                    global_agent_timeout = strtol(arg, &endptr, 10);
+                    if (*endptr || errno)
+                        fatal("invalid --agent argument -- %s", arg);
+                } else
+                    global_agent_timeout = ENCHIVE_AGENT_TIMEOUT;
+                break;
+            case 'A':
+                global_agent_timeout = 0;
+                break;
+#endif
 #if ENCHIVE_OPTION_RANDOM_DEVICE
             case 'r':
                 global_random_device = options->optarg;

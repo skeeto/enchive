@@ -59,6 +59,20 @@ option with `keygen`. It will load the secret key as if it were going
 to "extract" an archive, then write it back out with the new options.
 This mode will also regenerate the public key file.
 
+Enchive has a built-in protection key agent that keeps the protection
+key in memory for a configurable period of time (default: 15 minutes)
+after a protection passphrase has been read. This allows any files to
+be decrypted inside this window with only a single passphrase prompt.
+Use the `--agent` (`-a`) global option to enable it. If it's enabled
+by default, use `--no-agent` to turn it off.
+
+    $ enchive --agent extract file.enchive
+
+Unlike gpg-agent and ssh-agent, this agent need not be started ahead
+of time. It is started on demand, shuts down on timeout, and does not
+coordinate with environment variables. One agent is created per unique
+secret key file. This feature requires a unix-like system.
+
 ## Notes
 
 There's no effort at error recovery. It bails out on early on the
@@ -87,8 +101,3 @@ The process for decrypting a file:
 4. Initialize ChaCha20 with the shared secret as the key.
 5. Decrypt the ciphertext using ChaCha20.
 6. Verify `sha256(key + sha256(plaintext))`.
-
-## Roadmap
-
-* Decrypt multiple files in a short period: some kind of key agent?
-* Improve key generation.

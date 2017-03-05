@@ -23,6 +23,22 @@
 #  endif
 #endif
 
+#ifndef ENCHIVE_OPTION_AGENT
+#  if defined(__unix__) || defined(__APPLE__)
+#    define ENCHIVE_OPTION_AGENT 1
+#  else
+#    define ENCHIVE_OPTION_AGENT 0
+#  endif
+#endif
+
+#ifndef ENCHIVE_AGENT_TIMEOUT
+#  define ENCHIVE_AGENT_TIMEOUT 900 /* 15 minutes */
+#endif
+
+#ifndef ENCHIVE_AGENT_DEFAULT_ENABLED
+#  define ENCHIVE_AGENT_DEFAULT_ENABLED 0
+#endif
+
 /* Required for correct builds */
 
 #ifndef _POSIX_SOURCE
