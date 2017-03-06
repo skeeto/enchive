@@ -1126,6 +1126,12 @@ print_usage(FILE *f)
     multiputs(docs_usage, f);
 }
 
+static void
+print_version(void)
+{
+    puts("enchive " STR(ENCHIVE_VERSION));
+}
+
 int
 main(int argc, char **argv)
 {
@@ -1139,6 +1145,8 @@ main(int argc, char **argv)
 #endif
         {"pubkey",        'p', OPTPARSE_REQUIRED},
         {"seckey",        's', OPTPARSE_REQUIRED},
+        {"version",       'V', OPTPARSE_NONE},
+        {"help",          'h', OPTPARSE_NONE},
         {0, 0, 0}
     };
 
@@ -1177,6 +1185,14 @@ main(int argc, char **argv)
                 break;
             case 's':
                 global_seckey = options->optarg;
+                break;
+            case 'h':
+                print_usage(stdout);
+                exit(EXIT_SUCCESS);
+                break;
+            case 'V':
+                print_version();
+                exit(EXIT_SUCCESS);
                 break;
             default:
                 fatal("%s", options->errmsg);

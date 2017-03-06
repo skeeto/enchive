@@ -3,6 +3,10 @@
 
 /* Compile-time configuration */
 
+#ifndef ENCHIVE_VERSION
+#  define ENCHIVE_VERSION 1.0
+#endif
+
 #ifndef ENCHIVE_RANDOM_DEVICE
 #  define ENCHIVE_RANDOM_DEVICE /dev/urandom
 #endif

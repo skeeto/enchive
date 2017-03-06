@@ -4,8 +4,11 @@ static const char *docs_usage[] = {
 "              [-a|--agent[=seconds]] [--no-agent]",
 #endif
 #if ENCHIVE_OPTION_RANDOM_DEVICE
-"              [--random-device <file>]",
+"              [--random-device <file>] "
+#else
+"              "
 #endif
+"[--version] [--help]",
 "              <command> [args]",
 "",
 "Commands (unique prefixes accepted):",
@@ -24,6 +27,8 @@ static const char *docs_usage[] = {
 #endif
 "  --pubkey <file>, -p    set the public key file [~/.enchive.pub]",
 "  --seckey <file>, -s    set the secret key file [~/.enchive.sec]",
+"  --version              display version information",
+"  --help                 display this usage information",
 "",
 "Enchive archives files by encrypting them to yourself using your",
 "public key. It uses ChaCha20, Curve25519, and SHA-224.",
