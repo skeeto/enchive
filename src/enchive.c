@@ -922,17 +922,21 @@ command_archive(struct optparse *options)
         {0, 0, 0}
     };
 
+    /* Options */
     char *infile;
     char *outfile;
     FILE *in = stdin;
     FILE *out = stdout;
     char *pubfile = global_pubkey;
+    int delete = 0;
+
+    /* Workspace */
     u8 public[32];
     u8 esecret[32];
     u8 epublic[32];
     u8 shared[32];
-    u8 iv[8];
-    int delete = 0;
+    u8 iv[SHA256_BLOCK_SIZE];
+    SHA256_CTX sha[1];
 
     int option;
     while ((option = optparse_long(options, archive, 0)) != -1) {
@@ -980,8 +984,11 @@ command_archive(struct optparse *options)
 
     /* Create shared secret between ephemeral key and master key. */
     compute_shared(shared, esecret, public);
-    secure_entropy(iv, sizeof(iv));
-    if (!fwrite(iv, sizeof(iv), 1, out))
+    sha256_init(sha);
+    sha256_update(sha, shared, sizeof(shared));
+    sha256_final(sha, iv);
+    iv[0] += (unsigned)ENCHIVE_FORMAT_VERSION;
+    if (!fwrite(iv, 8, 1, out))
         fatal("failed to write IV to archive");
     if (!fwrite(epublic, sizeof(epublic), 1, out))
         fatal("failed to write ephemeral key to archive");
@@ -1004,16 +1011,21 @@ command_extract(struct optparse *options)
         {0, 0, 0}
     };
 
+    /* Options */
     char *infile;
     char *outfile;
     FILE *in = stdin;
     FILE *out = stdout;
     char *secfile = global_seckey;
+    int delete = 0;
+
+    /* Workspace */
+    SHA256_CTX sha[1];
     u8 secret[32];
     u8 epublic[32];
     u8 shared[32];
     u8 iv[8];
-    int delete = 0;
+    u8 check_iv[SHA256_BLOCK_SIZE];
 
     int option;
     while ((option = optparse_long(options, extract, 0)) != -1) {
@@ -1063,6 +1075,15 @@ command_extract(struct optparse *options)
     if (!(fread(epublic, sizeof(epublic), 1, in)))
         fatal("failed to read ephemeral key from archive");
     compute_shared(shared, secret, epublic);
+
+    /* Validate key before processing the file. */
+    sha256_init(sha);
+    sha256_update(sha, shared, sizeof(shared));
+    sha256_final(sha, check_iv);
+    check_iv[0] += (unsigned)ENCHIVE_FORMAT_VERSION;
+    if (memcmp(iv, check_iv, sizeof(iv)) != 0)
+        fatal("invalid master key or format");
+
     symmetric_decrypt(in, out, shared, iv);
 
     if (in != stdin)
