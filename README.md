@@ -8,7 +8,7 @@ performance.
 
 Supported platforms: Linux, BSD, macOS, Windows
 
-Files are secured with uses ChaCha20, Curve25519, and HMAC-SHA256.
+Files are secured with ChaCha20, Curve25519, and HMAC-SHA256.
 
 ## Usage
 
@@ -44,9 +44,9 @@ and output.
 ### Key management
 
 One of the core features of Enchive is the ability to derive an
-asymmetric key pair from a passphrase. This means you can store your
-archive key in your brain! To access this feature, use the `--derive`
-(`-d`) option with the `keygen` command.
+asymmetric key pair from a passphrase (PBKDF2). This means you can
+store your archive key in your brain! To access this feature, use the
+`--derive` (`-d`) option with the `keygen` command.
 
     $ enchive keygen --derive
 
