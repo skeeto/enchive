@@ -7,6 +7,10 @@
 #  define ENCHIVE_VERSION 2.0
 #endif
 
+#ifndef ENCHIVE_FORMAT_VERSION
+#  define ENCHIVE_FORMAT_VERSION 2
+#endif
+
 #ifndef ENCHIVE_RANDOM_DEVICE
 #  define ENCHIVE_RANDOM_DEVICE /dev/urandom
 #endif

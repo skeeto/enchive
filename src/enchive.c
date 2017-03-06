@@ -326,14 +326,12 @@ secure_creat(const char *file)
  * Optionally provide an 8-byte salt.
  */
 static void
-key_derive(const char *passphrase,
-           u8 *buf,
-           unsigned long iterations,
-           const u8 *salt)
+key_derive(const char *passphrase, u8 *buf, int iexp, const u8 *salt)
 {
     size_t len = strlen(passphrase);
     unsigned long i;
     SHA256_CTX ctx[1];
+    unsigned long iterations = 1UL << iexp;
     sha256_init(ctx);
     sha256_update(ctx, (u8 *)passphrase, len);
     if (salt)
@@ -596,36 +594,37 @@ write_pubkey(char *file, u8 *key)
 
 /* Layout of secret key file */
 #define SECFILE_IV            0
-#define SECFILE_ITERATIONS    8  /* big endian */
+#define SECFILE_ITERATIONS    8
+#define SECFILE_VERSION       9
 #define SECFILE_PROTECT_HASH  12
 #define SECFILE_SECKEY        32
 
 /**
  * Write the secret key to a file, encrypting it if necessary.
- *
  */
 static void
-write_seckey(const char *file, const u8 *seckey, unsigned long iterations)
+write_seckey(const char *file, const u8 *seckey, int iexp)
 {
     FILE *secfile;
     chacha_ctx cha[1];
     SHA256_CTX sha[1];
-    u8 buf[8 + 4 + 20 + 32] = {0}; /* entire file contents */
+    u8 buf[8 + 1 + 3 + 20 + 32] = {0}; /* entire file contents */
     u8 protect[32];
 
     u8 *buf_iv           = buf + SECFILE_IV;
     u8 *buf_iterations   = buf + SECFILE_ITERATIONS;
+    u8 *buf_version      = buf + SECFILE_VERSION;
     u8 *buf_protect_hash = buf + SECFILE_PROTECT_HASH;
     u8 *buf_seckey       = buf + SECFILE_SECKEY;
 
-    if (iterations) {
+    if (iexp) {
         /* Prompt for a passphrase. */
         char pass[2][ENCHIVE_PASSPHRASE_MAX];
         get_passphrase(pass[0], sizeof(pass[0]),
                        "passphrase (empty for none): ");
         if (!pass[0][0]) {
             /* Nevermind. */
-            iterations = 0;
+            iexp = 0;
         }  else {
             get_passphrase(pass[1], sizeof(pass[0]),
                            "passphrase (repeat): ");
@@ -635,11 +634,9 @@ write_seckey(const char *file, const u8 *seckey, unsigned long iterations)
             /* Generate an IV to double as salt. */
             secure_entropy(buf_iv, 8);
 
-            key_derive(pass[0], protect, iterations, buf_iv);
-            buf_iterations[0] = iterations >> 24;
-            buf_iterations[1] = iterations >> 16;
-            buf_iterations[2] = iterations >>  8;
-            buf_iterations[3] = iterations >>  0;
+            key_derive(pass[0], protect, iexp, buf_iv);
+            buf_iterations[0] = iexp;
+            buf_version[0] = ENCHIVE_FORMAT_VERSION;
 
             sha256_init(sha);
             sha256_update(sha, protect, sizeof(protect));
@@ -647,7 +644,7 @@ write_seckey(const char *file, const u8 *seckey, unsigned long iterations)
         }
     }
 
-    if (iterations) {
+    if (iexp) {
         /* Encrypt using key derived from passphrase. */
         chacha_keysetup(cha, protect, 256);
         chacha_ivsetup(cha, buf_iv);
@@ -698,9 +695,9 @@ load_seckey(const char *file, u8 *seckey)
     chacha_ctx cha[1];
     SHA256_CTX sha[1];
     u8 buf[8 + 4 + 20 + 32];            /* entire key file contents */
-    u8 empty[8] = {0};                  /* dummy IV when unencrypted */
     u8 protect[32];                     /* protection key */
     u8 protect_hash[SHA256_BLOCK_SIZE]; /* hash of protection key */
+    int iexp;
 
     u8 *buf_iv           = buf + SECFILE_IV;
     u8 *buf_iterations   = buf + SECFILE_ITERATIONS;
@@ -715,9 +712,9 @@ load_seckey(const char *file, u8 *seckey)
         fatal("failed to read key file -- %s", file);
     fclose(secfile);
 
-    if (memcmp(buf_iv, empty, sizeof(empty)) != 0) {
+    iexp = buf_iterations[0];
+    if (iexp) {
         /* Secret key is encrypted. */
-
         int agent_success = agent_read(protect, buf_iv);
         if (agent_success) {
             /* Check validity of agent key. */
@@ -730,14 +727,8 @@ load_seckey(const char *file, u8 *seckey)
         if (!agent_success) {
             /* Ask user for passphrase. */
             char pass[ENCHIVE_PASSPHRASE_MAX];
-            unsigned long iterations =
-                ((unsigned long)buf_iterations[0] << 24) |
-                ((unsigned long)buf_iterations[1] << 16) |
-                ((unsigned long)buf_iterations[2] <<  8) |
-                ((unsigned long)buf_iterations[3] <<  0);
             get_passphrase(pass, sizeof(pass), "passphrase: ");
-
-            key_derive(pass, protect, iterations, buf_iv);
+            key_derive(pass, protect, iexp, buf_iv);
 
             /* Validate passphrase. */
             sha256_init(sha);
@@ -823,10 +814,8 @@ command_keygen(struct optparse *options)
     int derive = 0;
     int edit = 0;
     int protect = 1;
-    unsigned long key_derive_iterations =
-        1UL << ENCHIVE_KEY_DERIVE_ITERATIONS;
-    unsigned long seckey_derive_iterations =
-        1UL << ENCHIVE_SECKEY_DERIVE_ITERATIONS;
+    int key_derive_iterations = ENCHIVE_KEY_DERIVE_ITERATIONS;
+    int seckey_derive_iterations = ENCHIVE_SECKEY_DERIVE_ITERATIONS;
 
     int option;
     while ((option = optparse_long(options, keygen, 0)) != -1) {
@@ -844,7 +833,7 @@ command_keygen(struct optparse *options)
                     if (n < 0 || n > 31)
                         fatal("--derive argument must be 0 <= n <= 31 -- %s",
                               arg);
-                    seckey_derive_iterations = 1UL << n;
+                    seckey_derive_iterations = n;
                 }
             } break;
             case 'e':
@@ -864,7 +853,7 @@ command_keygen(struct optparse *options)
                 if (n < 0 || n > 31)
                     fatal("--iterations argument must be 0 <= n <= 31 -- %s",
                           arg);
-                key_derive_iterations = 1UL << n;
+                key_derive_iterations = n;
             } break;
             case 'u':
                 protect = 0;
