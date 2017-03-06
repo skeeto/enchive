@@ -75,6 +75,9 @@ secret key file. This feature requires a unix-like system.
 
 ## Notes
 
+The major version number increments each time any of the file formats
+change, including the key derivation algorithm.
+
 There's no effort at error recovery. It bails out on early on the
 first error. It should clean up any incomplete files when it does so.
 
