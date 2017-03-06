@@ -698,9 +698,11 @@ load_seckey(const char *file, u8 *seckey)
     u8 protect[32];                     /* protection key */
     u8 protect_hash[SHA256_BLOCK_SIZE]; /* hash of protection key */
     int iexp;
+    int version;
 
     u8 *buf_iv           = buf + SECFILE_IV;
     u8 *buf_iterations   = buf + SECFILE_ITERATIONS;
+    u8 *buf_version      = buf + SECFILE_VERSION;
     u8 *buf_protect_hash = buf + SECFILE_PROTECT_HASH;
     u8 *buf_seckey       = buf + SECFILE_SECKEY;
 
@@ -711,6 +713,11 @@ load_seckey(const char *file, u8 *seckey)
     if (!fread(buf, sizeof(buf), 1, secfile))
         fatal("failed to read key file -- %s", file);
     fclose(secfile);
+
+    version = buf_version[0];
+    if (version != ENCHIVE_FORMAT_VERSION)
+        fatal("secret key version mismatch -- expected %d, got %d",
+              ENCHIVE_FORMAT_VERSION, version);
 
     iexp = buf_iterations[0];
     if (iexp) {
