@@ -44,9 +44,9 @@ and output.
 ### Key management
 
 One of the core features of Enchive is the ability to derive an
-asymmetric key pair from a passphrase (PBKDF2). This means you can
-store your archive key in your brain! To access this feature, use the
-`--derive` (`-d`) option with the `keygen` command.
+asymmetric key pair from a passphrase (PBKDF2-like). This means you
+can store your archive key in your brain! To access this feature, use
+the `--derive` (`-d`) option with the `keygen` command.
 
     $ enchive keygen --derive
 

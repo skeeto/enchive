@@ -341,8 +341,8 @@ key_derive(const char *passphrase,
     sha256_final(ctx, buf);
     for (i = 0; i < iterations; i++) {
         sha256_init(ctx);
-        sha256_update(ctx, (u8 *)passphrase, len);
         sha256_update(ctx, buf, sizeof(buf));
+        sha256_update(ctx, (u8 *)passphrase, len);
         sha256_final(ctx, buf);
     }
 }
