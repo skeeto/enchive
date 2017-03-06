@@ -4,7 +4,7 @@
 /* Compile-time configuration */
 
 #ifndef ENCHIVE_VERSION
-#  define ENCHIVE_VERSION 1.0
+#  define ENCHIVE_VERSION 2.0
 #endif
 
 #ifndef ENCHIVE_RANDOM_DEVICE
