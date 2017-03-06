@@ -1,7 +1,7 @@
 #ifndef CHACHA_H
 #define CHACHA_H
 
-#include "config.h"
+#include "../config.h"
 
 #define CHACHA_BLOCKLENGTH 64
 

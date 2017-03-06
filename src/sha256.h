@@ -10,7 +10,7 @@
 #define SHA256_H
 
 #include <stddef.h>
-#include "config.h"
+#include "../config.h"
 
 #define SHA256_BLOCK_SIZE 32
 
