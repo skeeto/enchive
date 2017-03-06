@@ -8,7 +8,7 @@ performance.
 
 Supported platforms: Linux, BSD, macOS, Windows
 
-Files are secured with uses ChaCha20, Curve25519, and SHA-256.
+Files are secured with uses ChaCha20, Curve25519, and HMAC-SHA256.
 
 ## Usage
 
@@ -90,17 +90,17 @@ The process for encrypting a file:
 4. Write the 8-byte IV.
 5. Write the 32-byte ephemeral public key.
 6. Encrypt the file with ChaCha20 and write the ciphertext.
-7. Write `sha256(key + sha256(plaintext))`.
+7. Write `HMAC(key, plaintext)`.
 
 The process for decrypting a file:
 
 1. Read the 8-byte ChaCha20 IV.
-2. Read the 32-byte ephemeral public key
+2. Read the 32-byte ephemeral public key.
 3. Perform a Curve25519 Diffie-Hellman key exchange with the ephemeral
    public key.
 4. Initialize ChaCha20 with the shared secret as the key.
 5. Decrypt the ciphertext using ChaCha20.
-6. Verify `sha256(key + sha256(plaintext))`.
+7. Write `HMAC(key, plaintext)`.
 
 ## Compile-time configuration
 

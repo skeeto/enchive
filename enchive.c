@@ -418,11 +418,18 @@ symmetric_encrypt(FILE *in, FILE *out, u8 *key, u8 *iv)
 {
     static u8 buffer[2][CHACHA_BLOCKLENGTH * 1024];
     u8 msghash[SHA256_BLOCK_SIZE];
+    u8 hmac_pad[SHA256_BLOCK_SIZE];
     SHA256_CTX hash[1];
     chacha_ctx ctx[1];
+    int i;
+
     chacha_keysetup(ctx, key, 256);
     chacha_ivsetup(ctx, iv);
+
     sha256_init(hash);
+    for (i = 0; i < SHA256_BLOCK_SIZE; i++)
+        hmac_pad[i] = key[i] ^ 0x36U;
+    sha256_update(hash, hmac_pad, sizeof(hmac_pad));
 
     for (;;) {
         size_t z = fread(buffer[0], 1, sizeof(buffer[0]), in);
@@ -441,7 +448,9 @@ symmetric_encrypt(FILE *in, FILE *out, u8 *key, u8 *iv)
 
     sha256_final(hash, msghash);
     sha256_init(hash);
-    sha256_update(hash, key, 32);
+    for (i = 0; i < SHA256_BLOCK_SIZE; i++)
+        hmac_pad[i] = key[i] ^ 0x5cU;
+    sha256_update(hash, hmac_pad, sizeof(hmac_pad));
     sha256_update(hash, msghash, sizeof(msghash));
     sha256_final(hash, msghash);
 
@@ -459,11 +468,18 @@ symmetric_decrypt(FILE *in, FILE *out, u8 *key, u8 *iv)
 {
     static u8 buffer[2][CHACHA_BLOCKLENGTH * 1024 + SHA256_BLOCK_SIZE];
     u8 msghash[SHA256_BLOCK_SIZE];
+    u8 hmac_pad[SHA256_BLOCK_SIZE];
     SHA256_CTX hash[1];
     chacha_ctx ctx[1];
+    int i;
+
     chacha_keysetup(ctx, key, 256);
     chacha_ivsetup(ctx, iv);
+
     sha256_init(hash);
+    for (i = 0; i < SHA256_BLOCK_SIZE; i++)
+        hmac_pad[i] = key[i] ^ 0x36U;
+    sha256_update(hash, hmac_pad, sizeof(hmac_pad));
 
     /* Always keep SHA256_BLOCK_SIZE bytes in the buffer. */
     if (!(fread(buffer[0], SHA256_BLOCK_SIZE, 1, in))) {
@@ -495,7 +511,9 @@ symmetric_decrypt(FILE *in, FILE *out, u8 *key, u8 *iv)
 
     sha256_final(hash, msghash);
     sha256_init(hash);
-    sha256_update(hash, key, 32);
+    for (i = 0; i < SHA256_BLOCK_SIZE; i++)
+        hmac_pad[i] = key[i] ^ 0x5cU;
+    sha256_update(hash, hmac_pad, sizeof(hmac_pad));
     sha256_update(hash, msghash, sizeof(msghash));
     sha256_final(hash, msghash);
 
