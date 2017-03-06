@@ -414,25 +414,52 @@ compute_shared(u8 *sh, const u8 *s, const u8 *p)
 }
 
 /**
+ * Initialize a SHA-256 context for HMAC-SHA256.
+ * All message data will go into the resulting context.
+ */
+static void
+hmac_init(SHA256_CTX *ctx, const u8 *key)
+{
+    int i;
+    u8 pad[SHA256_BLOCK_SIZE];
+    sha256_init(ctx);
+    for (i = 0; i < SHA256_BLOCK_SIZE; i++)
+        pad[i] = key[i] ^ 0x36U;
+    sha256_update(ctx, pad, sizeof(pad));
+}
+
+/**
+ * Compute the final HMAC-SHA256 MAC.
+ * The key must be the same as used for initialization.
+ */
+static void
+hmac_final(SHA256_CTX *ctx, const u8 *key, u8 *hash)
+{
+    int i;
+    u8 pad[SHA256_BLOCK_SIZE];
+    sha256_final(ctx, hash);
+    sha256_init(ctx);
+    for (i = 0; i < SHA256_BLOCK_SIZE; i++)
+        pad[i] = key[i] ^ 0x5cU;
+    sha256_update(ctx, pad, sizeof(pad));
+    sha256_update(ctx, hash, SHA256_BLOCK_SIZE);
+    sha256_final(ctx, hash);
+}
+
+/**
  * Encrypt from file to file using key/iv, aborting on any error.
  */
 static void
-symmetric_encrypt(FILE *in, FILE *out, u8 *key, u8 *iv)
+symmetric_encrypt(FILE *in, FILE *out, const u8 *key, const u8 *iv)
 {
     static u8 buffer[2][CHACHA_BLOCKLENGTH * 1024];
-    u8 msghash[SHA256_BLOCK_SIZE];
-    u8 hmac_pad[SHA256_BLOCK_SIZE];
-    SHA256_CTX hash[1];
+    u8 mac[SHA256_BLOCK_SIZE];
+    SHA256_CTX hmac[1];
     chacha_ctx ctx[1];
-    int i;
 
     chacha_keysetup(ctx, key, 256);
     chacha_ivsetup(ctx, iv);
-
-    sha256_init(hash);
-    for (i = 0; i < SHA256_BLOCK_SIZE; i++)
-        hmac_pad[i] = key[i] ^ 0x36U;
-    sha256_update(hash, hmac_pad, sizeof(hmac_pad));
+    hmac_init(hmac, key);
 
     for (;;) {
         size_t z = fread(buffer[0], 1, sizeof(buffer[0]), in);
@@ -441,7 +468,7 @@ symmetric_encrypt(FILE *in, FILE *out, u8 *key, u8 *iv)
                 fatal("error reading plaintext file");
             break;
         }
-        sha256_update(hash, buffer[0], z);
+        sha256_update(hmac, buffer[0], z);
         chacha_encrypt_bytes(ctx, buffer[0], buffer[1], z);
         if (!fwrite(buffer[1], z, 1, out))
             fatal("error writing ciphertext file");
@@ -449,15 +476,9 @@ symmetric_encrypt(FILE *in, FILE *out, u8 *key, u8 *iv)
             break;
     }
 
-    sha256_final(hash, msghash);
-    sha256_init(hash);
-    for (i = 0; i < SHA256_BLOCK_SIZE; i++)
-        hmac_pad[i] = key[i] ^ 0x5cU;
-    sha256_update(hash, hmac_pad, sizeof(hmac_pad));
-    sha256_update(hash, msghash, sizeof(msghash));
-    sha256_final(hash, msghash);
+    hmac_final(hmac, key, mac);
 
-    if (!fwrite(msghash, SHA256_BLOCK_SIZE, 1, out))
+    if (!fwrite(mac, sizeof(mac), 1, out))
         fatal("error writing checksum to ciphertext file");
     if (fflush(out))
         fatal("error flushing to ciphertext file");
@@ -467,22 +488,16 @@ symmetric_encrypt(FILE *in, FILE *out, u8 *key, u8 *iv)
  * Decrypt from file to file using key/iv, aborting on any error.
  */
 static void
-symmetric_decrypt(FILE *in, FILE *out, u8 *key, u8 *iv)
+symmetric_decrypt(FILE *in, FILE *out, const u8 *key, const u8 *iv)
 {
     static u8 buffer[2][CHACHA_BLOCKLENGTH * 1024 + SHA256_BLOCK_SIZE];
-    u8 msghash[SHA256_BLOCK_SIZE];
-    u8 hmac_pad[SHA256_BLOCK_SIZE];
-    SHA256_CTX hash[1];
+    u8 mac[SHA256_BLOCK_SIZE];
+    SHA256_CTX hmac[1];
     chacha_ctx ctx[1];
-    int i;
 
     chacha_keysetup(ctx, key, 256);
     chacha_ivsetup(ctx, iv);
-
-    sha256_init(hash);
-    for (i = 0; i < SHA256_BLOCK_SIZE; i++)
-        hmac_pad[i] = key[i] ^ 0x36U;
-    sha256_update(hash, hmac_pad, sizeof(hmac_pad));
+    hmac_init(hmac, key);
 
     /* Always keep SHA256_BLOCK_SIZE bytes in the buffer. */
     if (!(fread(buffer[0], SHA256_BLOCK_SIZE, 1, in))) {
@@ -501,7 +516,7 @@ symmetric_decrypt(FILE *in, FILE *out, u8 *key, u8 *iv)
             break;
         }
         chacha_encrypt_bytes(ctx, buffer[0], buffer[1], z);
-        sha256_update(hash, buffer[1], z);
+        sha256_update(hmac, buffer[1], z);
         if (!fwrite(buffer[1], z, 1, out))
             fatal("error writing plaintext file");
 
@@ -512,15 +527,8 @@ symmetric_decrypt(FILE *in, FILE *out, u8 *key, u8 *iv)
             break;
     }
 
-    sha256_final(hash, msghash);
-    sha256_init(hash);
-    for (i = 0; i < SHA256_BLOCK_SIZE; i++)
-        hmac_pad[i] = key[i] ^ 0x5cU;
-    sha256_update(hash, hmac_pad, sizeof(hmac_pad));
-    sha256_update(hash, msghash, sizeof(msghash));
-    sha256_final(hash, msghash);
-
-    if (memcmp(buffer[0], msghash, SHA256_BLOCK_SIZE) != 0)
+    hmac_final(hmac, key, mac);
+    if (memcmp(buffer[0], mac, sizeof(mac)) != 0)
         fatal("checksum mismatch!");
     if (fflush(out))
         fatal("error flushing to plaintext file");
