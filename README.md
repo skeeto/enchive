@@ -88,12 +88,13 @@ The process for encrypting a file:
 1. Generate an ephemeral 256-bit Curve25519 key pair.
 2. Perform a Curve25519 Diffie-Hellman key exchange with the master
    key to produce a shared secret.
-3. Generate a 64-bit IV for ChaCha20.
+3. SHA-256 hash the shared secret to generate a 64-bit IV.
+4. Add the format number to the first byte of the IV.
 5. Initialize ChaCha20 with the shared secret as the key.
-4. Write the 8-byte IV.
-5. Write the 32-byte ephemeral public key.
-6. Encrypt the file with ChaCha20 and write the ciphertext.
-7. Write `HMAC(key, plaintext)`.
+6. Write the 8-byte IV.
+7. Write the 32-byte ephemeral public key.
+8. Encrypt the file with ChaCha20 and write the ciphertext.
+9. Write `HMAC(key, plaintext)`.
 
 The process for decrypting a file:
 
@@ -101,9 +102,10 @@ The process for decrypting a file:
 2. Read the 32-byte ephemeral public key.
 3. Perform a Curve25519 Diffie-Hellman key exchange with the ephemeral
    public key.
-4. Initialize ChaCha20 with the shared secret as the key.
-5. Decrypt the ciphertext using ChaCha20.
-7. Write `HMAC(key, plaintext)`.
+4. Validate the IV against the shared secret hash and format version.
+5. Initialize ChaCha20 with the shared secret as the key.
+6. Decrypt the ciphertext using ChaCha20.
+7. Verify `HMAC(key, plaintext)`.
 
 ## Compile-time configuration
 
