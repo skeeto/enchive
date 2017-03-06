@@ -326,7 +326,10 @@ secure_creat(const char *file)
  * Optionally provide an 8-byte salt.
  */
 static void
-key_derive(char *passphrase, u8 *buf, unsigned long iterations, u8 *salt)
+key_derive(const char *passphrase,
+           u8 *buf,
+           unsigned long iterations,
+           const u8 *salt)
 {
     size_t len = strlen(passphrase);
     unsigned long i;
