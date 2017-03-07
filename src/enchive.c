@@ -911,8 +911,8 @@ command_keygen(struct optparse *options)
     }
 
     compute_public(public, secret);
-    write_pubkey(pubfile, public);
     write_seckey(secfile, secret, protect ? key_derive_iterations : 0);
+    write_pubkey(pubfile, public);
 }
 
 static void
