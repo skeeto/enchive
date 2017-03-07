@@ -107,12 +107,32 @@ The process for decrypting a file:
 6. Decrypt the ciphertext using ChaCha20.
 7. Verify `HMAC(key, plaintext)`.
 
-## Compile-time configuration
+## Compilation
+
+To build on any unix-like system, run `make`. The resulting binary has
+no dependencies or external data, so you can just copy/move this into
+your `PATH`.
+
+    $ make
+
+The easiest way to build with Visual Studio is to use the amalgamation
+build. On any unix-like system (requires `sed`):
+
+    $ make amalgamation
+
+This will create `enchive-cli.c`, a standalone C program that you can
+copy anywhere and compile. Over on Windows:
+
+    C:\> cl.exe -nologo -Ox enchive-cli.c advapi32.lib
+
+The compile-time options below also apply to this amalgamation build.
+
+### Compile-time configuration
 
 Various options and defaults can be configured at compile time using C
-defines (`-D...`). These also apply to the amalgamation build.
+defines (`-D...`).
 
-### `ENCHIVE_RANDOM_DEVICE`
+#### `ENCHIVE_RANDOM_DEVICE`
 
 For unix-like systems, this is the default source of entropy when
 creating keys and IVs. The default value is `/dev/urandom`. You could
@@ -121,38 +141,38 @@ of time][myths]. It can be changed at run time with `--random-device`.
 
 In the future, Enchive may first try `getrandom(2)` / `getentropy(2)`.
 
-### `ENCHIVE_OPTION_RANDOM_DEVICE`
+#### `ENCHIVE_OPTION_RANDOM_DEVICE`
 
 Whether or not the `--random-device` option should be available. This
 option is 0 by default on Windows, where Enchive always uses a
 [Cryptographic Service Provider][csp].
 
-### `ENCHIVE_OPTION_AGENT`
+#### `ENCHIVE_OPTION_AGENT`
 
 Whether to expose the `--agent` and `--no-agent` option. This option
 is 0 by default on Windows since agents are unsupported.
 
-### `ENCHIVE_AGENT_TIMEOUT`
+#### `ENCHIVE_AGENT_TIMEOUT`
 
 The default agent timeout in seconds. This can be configured at run
 time with an optional argument to `--agent`.
 
-### `ENCHIVE_AGENT_DEFAULT_ENABLED`
+#### `ENCHIVE_AGENT_DEFAULT_ENABLED`
 
 Whether or not to enable the agent by default. This can be explicitly
 overridden at run time with `--agent` and `--no-agent`.
 
-### `ENCHIVE_KEY_DERIVE_ITERATIONS`
+#### `ENCHIVE_KEY_DERIVE_ITERATIONS`
 
 Power-of-two exponent for protection key derivation. Can be configured
 at run time with `--iterations`.
 
-### `ENCHIVE_SECKEY_DERIVE_ITERATIONS`
+#### `ENCHIVE_SECKEY_DERIVE_ITERATIONS`
 
 Power-of-two exponent for secret key derivation. Can be configured at
 run time with the optional argument to `--derive`.
 
-### `ENCHIVE_PASSPHRASE_MAX`
+#### `ENCHIVE_PASSPHRASE_MAX`
 
 Maximum passphrase size in bytes, including null terminator.
 
