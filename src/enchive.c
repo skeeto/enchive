@@ -617,6 +617,8 @@ write_seckey(const char *file, const u8 *seckey, int iexp)
     u8 *buf_protect_hash = buf + SECFILE_PROTECT_HASH;
     u8 *buf_seckey       = buf + SECFILE_SECKEY;
 
+    buf_version[0] = ENCHIVE_FORMAT_VERSION;
+
     if (iexp) {
         /* Prompt for a passphrase. */
         char pass[2][ENCHIVE_PASSPHRASE_MAX];
@@ -636,7 +638,6 @@ write_seckey(const char *file, const u8 *seckey, int iexp)
 
             key_derive(pass[0], protect, iexp, buf_iv);
             buf_iterations[0] = iexp;
-            buf_version[0] = ENCHIVE_FORMAT_VERSION;
 
             sha256_init(sha);
             sha256_update(sha, protect, sizeof(protect));
