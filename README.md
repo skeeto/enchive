@@ -81,6 +81,11 @@ change, including the key derivation algorithm.
 There's no effort at error recovery. It bails out on early on the
 first error. It should clean up any incomplete files when it does so.
 
+No effort is made to set stdin and stdout to binary mode. For Windows
+this means passing data through Enchive using stdin/stdout isn't
+useful. This is low priority because Microsoft's [UCRT file streams
+are broken anyway][pipe] when pipes are involved.
+
 ## Format
 
 The process for encrypting a file:
@@ -182,3 +187,4 @@ Maximum passphrase size in bytes, including null terminator.
 [getrandom]: https://manpages.debian.org/testing/manpages-dev/getrandom.2.en.html
 [getentropy]: http://man.openbsd.org/OpenBSD-current/man2/getentropy.2
 [csp]: https://msdn.microsoft.com/en-us/library/windows/desktop/aa380246(v=vs.85).aspx
+[pipe]: https://radiance-online.org/pipermail/radiance-dev/2016-March/001576.html
