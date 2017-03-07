@@ -44,6 +44,18 @@ cleanup_register(FILE *file, const char *name)
     abort();
 }
 
+static void
+cleanup_closed(FILE *file)
+{
+    unsigned i;
+    for (i = 0; i < sizeof(cleanup) / sizeof(*cleanup); i++) {
+        if (file == cleanup[i].file)
+            cleanup[i].file = 0;
+        return;
+    }
+    abort();
+}
+
 /**
  * Print a message, cleanup, and exit the program with a failure code.
  */
@@ -588,6 +600,7 @@ write_pubkey(char *file, u8 *key)
     cleanup_register(f, file);
     if (!fwrite(key, 32, 1, f))
         fatal("failed to write key file -- %s", file);
+    cleanup_closed(f);
     if (fclose(f))
         fatal("failed to flush key file -- %s", file);
 }
@@ -661,6 +674,7 @@ write_seckey(const char *file, const u8 *seckey, int iexp)
     cleanup_register(secfile, file);
     if (!fwrite(buf, sizeof(buf), 1, secfile))
         fatal("failed to write key file -- %s", file);
+    cleanup_closed(secfile);
     if (fclose(secfile))
         fatal("failed to flush key file -- %s", file);
 }
@@ -997,8 +1011,10 @@ command_archive(struct optparse *options)
 
     if (in != stdin)
         fclose(in);
-    if (out != stdout)
+    if (out != stdout) {
+        cleanup_closed(out);
         fclose(out); /* already flushed */
+    }
 
     if (delete && infile)
         remove(infile);
@@ -1089,8 +1105,10 @@ command_extract(struct optparse *options)
 
     if (in != stdin)
         fclose(in);
-    if (out != stdout)
+    if (out != stdout) {
+        cleanup_closed(out);
         fclose(out); /* already flushed */
+    }
 
     if (delete && infile)
         remove(infile);
