@@ -225,6 +225,106 @@ agent_run(const u8 *key, const u8 *id)
 }
 #endif
 
+/**
+ * Prepend the system user config directory to a filename, creating
+ * the directory if necessary. Calls fatal() on any error.
+ */
+static char *storage_directory(char *file);
+
+#if defined(__unix__) || defined(__APPLE__)
+#include <dirent.h>
+#include <unistd.h>
+#include <sys/types.h>
+
+/* Use $XDG_CONFIG_HOME/enchive, or $HOME/.config/enchive. */
+static char *
+storage_directory(char *file)
+{
+    static const char enchive[] = "/enchive/";
+    static const char config[] = "/.config";
+    size_t filelen = strlen(file);
+    char *xdg_config_home = getenv("XDG_CONFIG_HOME");
+    size_t pathlen;
+    char *path, *s;
+
+    if (!xdg_config_home) {
+        size_t homelen;
+        char *home = getenv("HOME");
+        if (!home)
+            fatal("no $HOME or $XDG_CONFIG_HOME, giving up");
+        if (home[0] != '/')
+            fatal("$HOME is not absolute");
+        homelen = strlen(home);
+
+        pathlen = homelen + sizeof(config) + sizeof(enchive) + filelen - 1;
+        path = malloc(pathlen);
+        if (!path)
+            fatal("out of memory");
+        sprintf(path, "%s%s%s%s", home, config, enchive, file);
+    } else {
+        if (xdg_config_home[0] != '/')
+            fatal("$XDG_CONFIG_HOME is not absolute");
+        pathlen = strlen(xdg_config_home) + sizeof(enchive) + filelen;
+        path = malloc(pathlen);
+        if (!path)
+            fatal("out of memory");
+        sprintf(path, "%s%s%s", xdg_config_home, enchive, file);
+    }
+
+    s = strchr(path + 1, '/');
+    while (s) {
+        *s = 0;
+        if (mkdir(path, 0700)) {
+            if (errno == EEXIST) {
+                DIR *dir = opendir(path);
+                if (dir)
+                    closedir(dir);
+                else
+                    fatal("%s -- %s", path, strerror(errno));
+            } else {
+                fatal("%s -- %s", path, strerror(errno));
+            }
+        }
+        *s = '/';
+        s = strchr(s + 1, '/');
+    }
+
+    return path;
+}
+
+#elif defined(_WIN32)
+#include <windows.h>
+
+/* Use %APPDATA% */
+static char *
+storage_directory(char *file)
+{
+    static const char enchive[] = "\\enchive\\";
+    char *path;
+    size_t filelen = strlen(file);
+    char *appdata = getenv("APPDATA");
+    size_t appdatalen;
+    if (!appdata)
+        fatal("$APPDATA is unset");
+    appdatalen = strlen(appdata);
+
+    path = malloc(appdatalen + sizeof(enchive) + filelen);
+    sprintf(path, "%s%s", appdata, enchive);
+    if (!CreateDirectory(path, 0)) {
+        if (GetLastError() == ERROR_PATH_NOT_FOUND) {
+            fatal("$APPDATA directory doesn't exist");
+        } else { /* ERROR_ALREADY_EXISTS */
+            DWORD dwAttrib = GetFileAttributes(path);
+            if (!(dwAttrib & FILE_ATTRIBUTE_DIRECTORY))
+                fatal("%s is not a file", path);
+        }
+    }
+    sprintf(path, "%s%s%s", appdata, enchive, file);
+    return path;
+}
+
+#endif /* _WIN32 */
+
 static void get_passphrase(char *buf, size_t len, char *prompt);
 
 /**
@@ -577,46 +677,21 @@ symmetric_decrypt(FILE *in, FILE *out, const u8 *key, const u8 *iv)
 }
 
 /**
- * Prepend the HOME directory to a filename, aborting if it doesn't fit.
- */
-static void
-prepend_home(char *buf, size_t buflen, char *file)
-{
-    size_t filelen = strlen(file);
-    char *home = getenv("HOME");
-    size_t homelen;
-
-    if (!home)
-        fatal("no HOME environment, can't figure out public file");
-    homelen = strlen(home);
-    if (homelen + 1 + filelen + 1 > buflen)
-        fatal("HOME is too long");
-
-    memcpy(buf, home, homelen);
-    buf[homelen] = '/';
-    memcpy(buf + homelen + 1, file, filelen + 1);
-}
-
-/**
- * Return the default public key file (static buffer).
+ * Return the default public key file.
  */
 static char *
 default_pubfile(void)
 {
-    static char buf[4096];
-    prepend_home(buf, sizeof(buf), ".enchive.pub");
-    return buf;
+    return storage_directory("enchive.pub");
 }
 
 /**
- * Return the default public key file (static buffer).
+ * Return the default public key file.
  */
 static char *
 default_secfile(void)
 {
-    static char buf[4096];
-    prepend_home(buf, sizeof(buf), ".enchive.sec");
-    return buf;
+    return storage_directory("enchive.sec");
 }
 
 /**

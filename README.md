@@ -19,10 +19,12 @@ secret key, just like `ssh-keygen`.
 
     $ enchive keygen
 
-By default, this will create two files in your home directory:
-`.enchive.pub` (public key) and `.enchive.sec` (secret key).
-Distribute `.enchive.pub` to any machines where you plan to archive
-files. It's sufficient to encrypt files, but not to decrypt them.
+By default, this will create two files in `$XDG_CONFIG_HOME/enchive`
+(or `$HOME/.config/enchive`): `enchive.pub` (public key) and
+`enchive.sec` (secret key). On Windows, these are found under
+`%APPDATA%\enchive` instead. Distribute `enchive.pub` to any machines
+where you plan to archive files. It's sufficient to encrypt files, but
+not to decrypt them.
 
 To archive a file for storage:
 
@@ -31,8 +33,8 @@ To archive a file for storage:
 This will encrypt `sensitive.zip` as `sensitive.zip.enchive` (leaving
 the original in place). You can safely archive this wherever.
 
-To extract the file on a machine with `.encrypt.sec`, use `extract`.
-It will prompt for the passphrase you entered during key generation.
+To extract the file on a machine with `encrypt.sec`, use `extract`. It
+will prompt for the passphrase you entered during key generation.
 
     $ enchive extract sensitive.zip.enchive
 
