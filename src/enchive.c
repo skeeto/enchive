@@ -478,7 +478,7 @@ hmac_final(SHA256_CTX *ctx, const u8 *key, u8 *hash)
 static void
 key_derive(const char *passphrase, u8 *buf, int iexp, const u8 *salt)
 {
-    static const u8 empty[8] = {0};
+    u8 salt32[SHA256_BLOCK_SIZE] = {0};
     SHA256_CTX ctx[1];
     unsigned long i;
     unsigned long memlen = 1UL << iexp;
@@ -490,11 +490,11 @@ key_derive(const char *passphrase, u8 *buf, int iexp, const u8 *salt)
     if (!memory)
         fatal("not enough memory for key derivation");
 
-    if (!salt)
-        salt = empty;
-    hmac_init(ctx, salt);
+    if (salt)
+        memcpy(salt32, salt, 8);
+    hmac_init(ctx, salt32);
     sha256_update(ctx, (u8 *)passphrase, strlen(passphrase));
-    hmac_final(ctx, salt, memory);
+    hmac_final(ctx, salt32, memory);
 
     for (p = memory + SHA256_BLOCK_SIZE;
          p < memory + memlen + SHA256_BLOCK_SIZE;
@@ -860,7 +860,7 @@ load_seckey(const char *file, u8 *seckey)
 
             /* Validate passphrase. */
             sha256_init(sha);
-            sha256_update(sha, protect, 32);
+            sha256_update(sha, protect, sizeof(protect));
             sha256_final(sha, protect_hash);
             if (memcmp(protect_hash, buf_protect_hash, 20) != 0)
                 fatal("wrong passphrase");
