@@ -97,7 +97,7 @@ this means passing data through Enchive using stdin/stdout isn't
 useful. This is low priority because Microsoft's [UCRT file streams
 are broken anyway][pipe] when pipes are involved.
 
-## Format
+## Encryption/decryption algorithm
 
 The process for encrypting a file:
 
@@ -123,7 +123,7 @@ The process for decrypting a file:
 6. Decrypt the ciphertext using ChaCha20.
 7. Verify `HMAC(key, plaintext)`.
 
-### Key derivation
+## Key derivation algorithm
 
 Enchive uses an scrypt-like algorithm for key derivation, requiring a
 large buffer of random access memory. Derivation is controlled by a
