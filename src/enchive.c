@@ -318,9 +318,10 @@ storage_directory(char *file)
         if (GetLastError() == ERROR_PATH_NOT_FOUND) {
             fatal("$APPDATA directory doesn't exist");
         } else { /* ERROR_ALREADY_EXISTS */
-            DWORD dwAttrib = GetFileAttributes(path);
-            if (!(dwAttrib & FILE_ATTRIBUTE_DIRECTORY))
-                fatal("%s is not a file", path);
+            DWORD attr = GetFileAttributes(path);
+            if ((attr == INVALID_FILE_ATTRIBUTES) ||
+                !(attr & FILE_ATTRIBUTE_DIRECTORY))
+                fatal("%s is not a directory", path);
         }
     }
     sprintf(path, "%s%s%s", appdata, enchive, file);
