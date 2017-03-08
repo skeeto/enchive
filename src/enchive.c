@@ -99,15 +99,19 @@ warning(const char *fmt, ...)
 static int
 agent_addr(struct sockaddr_un *addr, const u8 *iv)
 {
-    char *tmpdir;
+    char *dir = getenv("XDG_RUNTIME_DIR");
+    if (!dir) {
+        dir = getenv("TMPDIR");
+        if (!dir)
+            dir = "/tmp";
+    }
+
     addr->sun_family = AF_UNIX;
-    if (!(tmpdir = getenv("TMPDIR")))
-        tmpdir = "/tmp";
-    if (strlen(tmpdir) + 40 + 1 > sizeof(addr->sun_path)) {
-        warning("$TMPDIR too long -- %s", tmpdir);
+    if (strlen(dir) + 1 + 16 + 1 > sizeof(addr->sun_path)) {
+        warning("agent socket path too long -- %s", dir);
         return 0;
     } else {
-        sprintf(addr->sun_path, "%s/%02x%02x%02x%02x%02x%02x%02x%02x", tmpdir,
+        sprintf(addr->sun_path, "%s/%02x%02x%02x%02x%02x%02x%02x%02x", dir,
                 iv[0], iv[1], iv[2], iv[3], iv[4], iv[5], iv[6], iv[7]);
         return 1;
     }
