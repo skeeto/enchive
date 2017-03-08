@@ -1,12 +1,15 @@
 # Enchive : encrypted personal archives
 
-Enchive is a tool encrypts files to yourself for long-term archival.
-It's intended as a focused, simple alternative to more complex
-solutions such as GnuPG. This program has no external dependencies and
-is very easy to build for local use. Portability is emphasized over
+Enchive is a tool to encrypt files to yourself for long-term archival.
+It's a focused, simple alternative to more complex solutions such as
+GnuPG or encrypted filesystems. Enchive has no external dependencies
+and is trivial to build for local use. Portability is emphasized over
 performance.
 
 Supported platforms: Linux, BSD, macOS, Windows
+
+The name is a portmanteau of "encrypt" and "archive," pronounced
+en'kīv.
 
 Files are secured with ChaCha20, Curve25519, and HMAC-SHA256.
 
