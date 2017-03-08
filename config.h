@@ -4,11 +4,11 @@
 /* Compile-time configuration */
 
 #ifndef ENCHIVE_VERSION
-#  define ENCHIVE_VERSION 2.1
+#  define ENCHIVE_VERSION 3.0
 #endif
 
 #ifndef ENCHIVE_FORMAT_VERSION
-#  define ENCHIVE_FORMAT_VERSION 2
+#  define ENCHIVE_FORMAT_VERSION 3
 #endif
 
 #ifndef ENCHIVE_RANDOM_DEVICE
