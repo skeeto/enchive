@@ -56,20 +56,22 @@ archive key in your brain! To access this feature, use the `--derive`
     $ enchive keygen --derive
 
 There's an optional argument to `--derive` that controls the number of
-key derivation iterations (e.g. `--derive=26`). The default is 24.
-This is a power two exponent, so every increment doubles the cost.
+key derivation iterations (e.g. `--derive=26`). The default is 29.
+This is a power two exponent, so every increment doubles the cost both
+in memory and computational demands.
 
 If you want to change your protection passphrase, use the `--edit`
 option with `keygen`. It will load the secret key as if it were going
 to "extract" an archive, then write it back out with the new options.
-This mode will also regenerate the public key file.
+This mode will also regenerate the public key file whether or not it
+exists.
 
 Enchive has a built-in protection key agent that keeps the protection
 key in memory for a configurable period of time (default: 15 minutes)
-after a protection passphrase has been read. This allows any files to
-be decrypted inside this window with only a single passphrase prompt.
-Use the `--agent` (`-a`) global option to enable it. If it's enabled
-by default, use `--no-agent` to turn it off.
+after a protection passphrase has been read. This allows many files to
+be decrypted inside a brief window with only a single passphrase
+prompt. Use the `--agent` (`-a`) global option to enable it. If it's
+enabled by default, use `--no-agent` to turn it off.
 
     $ enchive --agent extract file.enchive
 
@@ -85,6 +87,10 @@ change, including the key derivation algorithm.
 
 There's no effort at error recovery. It bails out on early on the
 first error. It should clean up any incomplete files when it does so.
+
+A purposeful design choice is that encrypted/archived files have no
+distinguishing marks whatsoever (magic numbers, etc.), making them
+indistinguishable from random data.
 
 No effort is made to set stdin and stdout to binary mode. For Windows
 this means passing data through Enchive using stdin/stdout isn't
