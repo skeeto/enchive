@@ -334,27 +334,89 @@ secure_creat(const char *file)
 #endif
 
 /**
+ * Initialize a SHA-256 context for HMAC-SHA256.
+ * All message data will go into the resulting context.
+ */
+static void
+hmac_init(SHA256_CTX *ctx, const u8 *key)
+{
+    int i;
+    u8 pad[SHA256_BLOCK_SIZE];
+    sha256_init(ctx);
+    for (i = 0; i < SHA256_BLOCK_SIZE; i++)
+        pad[i] = key[i] ^ 0x36U;
+    sha256_update(ctx, pad, sizeof(pad));
+}
+
+/**
+ * Compute the final HMAC-SHA256 MAC.
+ * The key must be the same as used for initialization.
+ */
+static void
+hmac_final(SHA256_CTX *ctx, const u8 *key, u8 *hash)
+{
+    int i;
+    u8 pad[SHA256_BLOCK_SIZE];
+    sha256_final(ctx, hash);
+    sha256_init(ctx);
+    for (i = 0; i < SHA256_BLOCK_SIZE; i++)
+        pad[i] = key[i] ^ 0x5cU;
+    sha256_update(ctx, pad, sizeof(pad));
+    sha256_update(ctx, hash, SHA256_BLOCK_SIZE);
+    sha256_final(ctx, hash);
+}
+
+/**
  * Derive a 32-byte key from null-terminated passphrase into buf.
  * Optionally provide an 8-byte salt.
  */
 static void
 key_derive(const char *passphrase, u8 *buf, int iexp, const u8 *salt)
 {
+    static const u8 empty[8] = {0};
     size_t len = strlen(passphrase);
-    unsigned long i;
     SHA256_CTX ctx[1];
-    unsigned long iterations = 1UL << iexp;
-    sha256_init(ctx);
+    unsigned long i;
+    unsigned long memlen = 1UL << iexp;
+    unsigned long mask = memlen - 1;
+    unsigned long iterations = 1UL << (iexp - 5);
+    u8 *memory, *memptr, *p;
+
+    memory = malloc(memlen + SHA256_BLOCK_SIZE);
+    if (!memory)
+        fatal("not enough memory for key derivation");
+
+    if (!salt)
+        salt = empty;
+    hmac_init(ctx, salt);
     sha256_update(ctx, (u8 *)passphrase, len);
-    if (salt)
-        sha256_update(ctx, salt, 8);
-    sha256_final(ctx, buf);
-    for (i = 0; i < iterations; i++) {
+    hmac_final(ctx, salt, memory);
+
+    for (p = memory + SHA256_BLOCK_SIZE;
+         p < memory + memlen + SHA256_BLOCK_SIZE;
+         p += SHA256_BLOCK_SIZE) {
         sha256_init(ctx);
-        sha256_update(ctx, buf, sizeof(buf));
+        sha256_update(ctx, p - SHA256_BLOCK_SIZE, SHA256_BLOCK_SIZE);
+        sha256_update(ctx, (u8 *)passphrase, len);
+        sha256_final(ctx, p);
+    }
+
+    memptr = memory + memlen - SHA256_BLOCK_SIZE;
+    for (i = 0; i < iterations; i++) {
+        unsigned long offset;
+        sha256_init(ctx);
+        sha256_update(ctx, memptr, SHA256_BLOCK_SIZE);
         sha256_update(ctx, (u8 *)passphrase, len);
         sha256_final(ctx, buf);
+        offset = ((unsigned long)buf[3] << 24 |
+                  (unsigned long)buf[2] << 16 |
+                  (unsigned long)buf[1] <<  8 |
+                  (unsigned long)buf[0] <<  0);
+        memptr = memory + (offset & mask);
     }
+
+    memcpy(buf, memptr, SHA256_BLOCK_SIZE);
+    free(memory);
 }
 
 /**
@@ -421,39 +483,6 @@ static void
 compute_shared(u8 *sh, const u8 *s, const u8 *p)
 {
     curve25519_donna(sh, s, p);
-}
-
-/**
- * Initialize a SHA-256 context for HMAC-SHA256.
- * All message data will go into the resulting context.
- */
-static void
-hmac_init(SHA256_CTX *ctx, const u8 *key)
-{
-    int i;
-    u8 pad[SHA256_BLOCK_SIZE];
-    sha256_init(ctx);
-    for (i = 0; i < SHA256_BLOCK_SIZE; i++)
-        pad[i] = key[i] ^ 0x36U;
-    sha256_update(ctx, pad, sizeof(pad));
-}
-
-/**
- * Compute the final HMAC-SHA256 MAC.
- * The key must be the same as used for initialization.
- */
-static void
-hmac_final(SHA256_CTX *ctx, const u8 *key, u8 *hash)
-{
-    int i;
-    u8 pad[SHA256_BLOCK_SIZE];
-    sha256_final(ctx, hash);
-    sha256_init(ctx);
-    for (i = 0; i < SHA256_BLOCK_SIZE; i++)
-        pad[i] = key[i] ^ 0x5cU;
-    sha256_update(ctx, pad, sizeof(pad));
-    sha256_update(ctx, hash, SHA256_BLOCK_SIZE);
-    sha256_final(ctx, hash);
 }
 
 /**
@@ -852,7 +881,7 @@ command_keygen(struct optparse *options)
                     n = strtol(arg, &p, 10);
                     if (errno || *p)
                         fatal("invalid argument -- %s", arg);
-                    if (n < 0 || n > 31)
+                    if (n < 5 || n > 31)
                         fatal("--derive argument must be 0 <= n <= 31 -- %s",
                               arg);
                     seckey_derive_iterations = n;

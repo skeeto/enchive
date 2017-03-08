@@ -44,9 +44,9 @@ and output.
 ### Key management
 
 One of the core features of Enchive is the ability to derive an
-asymmetric key pair from a passphrase (PBKDF2-like). This means you
-can store your archive key in your brain! To access this feature, use
-the `--derive` (`-d`) option with the `keygen` command.
+asymmetric key pair from a passphrase. This means you can store your
+archive key in your brain! To access this feature, use the `--derive`
+(`-d`) option with the `keygen` command.
 
     $ enchive keygen --derive
 
@@ -111,6 +111,26 @@ The process for decrypting a file:
 5. Initialize ChaCha20 with the shared secret as the key.
 6. Decrypt the ciphertext using ChaCha20.
 7. Verify `HMAC(key, plaintext)`.
+
+### Key derivation
+
+Enchive uses an scrypt-like algorithm for key derivation, requiring a
+lot of random access memory. Derivation is controlled by a single
+difficulty exponent *D*. Secret key derivation requires 512MB of
+memory (D=29) by default, and protection key derivation requires 32MB
+by default (D=25). The salt for the secret key is all zeros.
+
+1. Allocate a `(1 << D) + 32` byte buffer, *M*.
+2. Compute `HMAC_SHA256(salt, passphrase)` and write this 32-byte
+   result to the beginning of *M*.
+3. For each uninitialized 32-byte chunk in *M*, compute the SHA-256
+   hash of the previous 32-byte chunk.
+4. Initialize a byte pointer *P* to the last 32-byte chunk of *M*.
+5. Compute the SHA-256 of the 32 bytes at *P*.
+6. Take the first *D* bits of this hash and use this value to set a
+   new *P* pointing elsewhere into *M*.
+7. Repeat from step 5 `1 << (D - 5)` times.
+8. *P* points to the result.
 
 ## Compilation
 
