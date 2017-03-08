@@ -407,11 +407,11 @@ key_derive(const char *passphrase, u8 *buf, int iexp, const u8 *salt)
         sha256_init(ctx);
         sha256_update(ctx, memptr, SHA256_BLOCK_SIZE);
         sha256_update(ctx, (u8 *)passphrase, len);
-        sha256_final(ctx, buf);
-        offset = ((unsigned long)buf[3] << 24 |
-                  (unsigned long)buf[2] << 16 |
-                  (unsigned long)buf[1] <<  8 |
-                  (unsigned long)buf[0] <<  0);
+        sha256_final(ctx, memptr);
+        offset = ((unsigned long)memptr[3] << 24 |
+                  (unsigned long)memptr[2] << 16 |
+                  (unsigned long)memptr[1] <<  8 |
+                  (unsigned long)memptr[0] <<  0);
         memptr = memory + (offset & mask);
     }
 
