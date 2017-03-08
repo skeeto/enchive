@@ -882,7 +882,7 @@ command_keygen(struct optparse *options)
                     if (errno || *p)
                         fatal("invalid argument -- %s", arg);
                     if (n < 5 || n > 31)
-                        fatal("--derive argument must be 0 <= n <= 31 -- %s",
+                        fatal("--derive argument must be 5 <= n <= 31 -- %s",
                               arg);
                     seckey_derive_iterations = n;
                 }
@@ -901,8 +901,8 @@ command_keygen(struct optparse *options)
                 n = strtol(arg, &p, 10);
                 if (errno || *p)
                     fatal("invalid argument -- %s", arg);
-                if (n < 0 || n > 31)
-                    fatal("--iterations argument must be 0 <= n <= 31 -- %s",
+                if (n < 5 || n > 31)
+                    fatal("--iterations argument must be 5 <= n <= 31 -- %s",
                           arg);
                 key_derive_iterations = n;
             } break;
