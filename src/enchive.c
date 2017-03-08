@@ -165,6 +165,11 @@ agent_run(const u8 *key, const u8 *iv)
     close(1);
 
     umask(~(S_IRUSR | S_IWUSR));
+
+    if (unlink(addr.sun_path))
+        if (errno != ENOENT)
+            fatal("failed to remove existing socket -- %s", strerror(errno));
+
     if (bind(pfd.fd, (struct sockaddr *)&addr, sizeof(addr))) {
         if (errno != EADDRINUSE)
             warning("could not bind agent socket %s -- %s",
