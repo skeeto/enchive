@@ -374,7 +374,6 @@ static void
 key_derive(const char *passphrase, u8 *buf, int iexp, const u8 *salt)
 {
     static const u8 empty[8] = {0};
-    size_t len = strlen(passphrase);
     SHA256_CTX ctx[1];
     unsigned long i;
     unsigned long memlen = 1UL << iexp;
@@ -389,7 +388,7 @@ key_derive(const char *passphrase, u8 *buf, int iexp, const u8 *salt)
     if (!salt)
         salt = empty;
     hmac_init(ctx, salt);
-    sha256_update(ctx, (u8 *)passphrase, len);
+    sha256_update(ctx, (u8 *)passphrase, strlen(passphrase));
     hmac_final(ctx, salt, memory);
 
     for (p = memory + SHA256_BLOCK_SIZE;
@@ -397,7 +396,6 @@ key_derive(const char *passphrase, u8 *buf, int iexp, const u8 *salt)
          p += SHA256_BLOCK_SIZE) {
         sha256_init(ctx);
         sha256_update(ctx, p - SHA256_BLOCK_SIZE, SHA256_BLOCK_SIZE);
-        sha256_update(ctx, (u8 *)passphrase, len);
         sha256_final(ctx, p);
     }
 
@@ -406,7 +404,6 @@ key_derive(const char *passphrase, u8 *buf, int iexp, const u8 *salt)
         unsigned long offset;
         sha256_init(ctx);
         sha256_update(ctx, memptr, SHA256_BLOCK_SIZE);
-        sha256_update(ctx, (u8 *)passphrase, len);
         sha256_final(ctx, memptr);
         offset = ((unsigned long)memptr[3] << 24 |
                   (unsigned long)memptr[2] << 16 |

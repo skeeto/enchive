@@ -124,19 +124,14 @@ of memory (D=29) by default, and protection key derivation requires
 2. Compute `HMAC_SHA256(salt, passphrase)` and write this 32-byte
    result to the beginning of *M*.
 3. For each uninitialized 32-byte chunk in *M*, compute the SHA-256
-   hash of the previous 32-byte chunk concatenated with the
-   passphrase.
+   hash of the previous 32-byte chunk.
 4. Initialize a byte pointer *P* to the last 32-byte chunk of *M*.
-5. Compute the SHA-256 of the 32 bytes at *P* concatenated with the
-   passphrase.
-6. Overwrite the memory at *P* with this new hash value.
-7. Take the first *D* bits of this hash and use this value to set a
-   new *P* pointing elsewhere into *M*.
+5. Compute the SHA-256 hash, *H*, of the 32 bytes at *P*.
+6. Overwrite the memory at *P* with *H*.
+7. Take the first *D* bits of *H* and use this value to set a new *P*
+   pointing into *M*.
 8. Repeat from step 5 `1 << (D - 5)` times.
 9. *P* points to the result.
-
-The passphrase is always concatenated on the end so that the hash
-context can't be precomputed.
 
 ## Compilation
 
