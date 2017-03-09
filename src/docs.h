@@ -31,7 +31,7 @@ static const char *docs_usage[] = {
 "  --help                 display this usage information",
 "",
 "Enchive archives files by encrypting them to yourself using your",
-"public key. It uses ChaCha20, Curve25519, and SHA-224.",
+"public key. It uses ChaCha20, Curve25519, and HMAC-SHA256.",
 0};
 
 static const char *docs_keygen[] = {
