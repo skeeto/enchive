@@ -1189,7 +1189,7 @@ command_extract(struct optparse *options)
         size_t len = strlen(infile);
         if (len <= slen || strcmp(suffix, infile + len - slen) != 0)
             fatal("could not determine output filename from %s", infile);
-        outfile = malloc(len - slen);
+        outfile = malloc(len - slen + 1);
         if (!outfile)
             fatal("out of memory");
         memcpy(outfile, infile, len - slen);
