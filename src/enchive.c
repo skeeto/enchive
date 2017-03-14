@@ -916,7 +916,7 @@ static const char command_names[][8] = {
 static enum command
 parse_command(char *command)
 {
-    int found = -2;
+    int found = COMMAND_UNKNOWN;
     size_t len = strlen(command);
     int i;
     for (i = 0; i < 4; i++) {
