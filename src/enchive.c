@@ -75,6 +75,7 @@ fatal(const char *fmt, ...)
             fclose(cleanup[i].file);
         remove(cleanup[i].name);
     }
+    va_end(ap);
     exit(EXIT_FAILURE);
 }
 
@@ -89,6 +90,7 @@ warning(const char *fmt, ...)
     fprintf(stderr, "warning: ");
     vfprintf(stderr, fmt, ap);
     fputc('\n', stderr);
+    va_end(ap);
 }
 
 #if ENCHIVE_OPTION_AGENT
