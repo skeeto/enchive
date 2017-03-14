@@ -97,6 +97,52 @@ this means passing data through Enchive using stdin/stdout isn't
 useful. This is low priority because Microsoft's [UCRT file streams
 are broken anyway][pipe] when pipes are involved.
 
+### Frequently asked questions
+
+> This tool will never achieve critical mass, so what's the point?
+
+Enchive doesn't need to interact with any other systems or people, so
+there's no need for critical mass, nor that there are any other users.
+
+> Why can't you use an existing/established tool instead?
+
+I'm not aware of any tool that does everything Enchive does. GnuPG
+comes close, but doesn't support deriving a key pair from a
+passphrase. If you're aware of an equal or better tool, please let me
+know.
+
+> Isn't it dangerous to derive a key pair from a passphrase?
+
+It is when it's done incorrectly. However, Enchive uses a memory-hard
+key derivation scheme that makes cracking passphrases very expensive —
+prohibitively so for any decent passphrase. This is because anyone who
+has access to even a single encrypted file can mount an offline
+attack.
+
+Deriving asymmetric keys from a passphrase is a standard practice in
+the Bitcoin world: [brainwallets][bw]. The caveat is that the
+passphrase must be sufficiently long, preferably chosen by a computer
+or [with dice][dw].
+
+When generating a master key, Enchive's default configuration is
+extremely paranoid. It would be far cheaper to break into your home
+and perform an evil maid attack than it would be to crack even a short
+passphrase. This is not the weak point.
+
+> Shouldn't the initialization vector (IV) be generated randomly?
+
+The purpose of an IV is to allow the same key to be safely used
+multiple times. This is particularly important when the same key is
+dervied by Diffie-Hellman between the same keypair. Enchive generates
+a random ephemeral key pair each time a file is encrypted, so the IV
+is unnecessary.
+
+Since ChaCha20 requires an IV regardless, Enchive simply uses the hash
+of the key. This has the additional effect of allowing the client to
+verify its symmetric key before beginning decryption. Otherwise a
+wrong key would only be detected by the MAC after decryption has
+completed.
+
 ## Encryption/decryption algorithm
 
 The process for encrypting a file:
@@ -220,3 +266,5 @@ Maximum passphrase size in bytes, including null terminator.
 [getentropy]: http://man.openbsd.org/OpenBSD-current/man2/getentropy.2
 [csp]: https://msdn.microsoft.com/en-us/library/windows/desktop/aa380246(v=vs.85).aspx
 [pipe]: https://radiance-online.org/pipermail/radiance-dev/2016-March/001576.html
+[bw]: https://en.bitcoin.it/wiki/Brainwallet
+[dw]: http://world.std.com/~reinhold/diceware.html
