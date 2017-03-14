@@ -133,9 +133,9 @@ passphrase. This is not the weak point.
 
 The purpose of an IV is to allow the same key to be safely used
 multiple times. This is particularly important when the same key is
-dervied by Diffie-Hellman between the same keypair. Enchive generates
-a random ephemeral key pair each time a file is encrypted, so the IV
-is unnecessary.
+derived on different occasions by Diffie-Hellman between the same key
+pair. Enchive generates a random ephemeral key pair each time a file
+is encrypted, so the IV is unnecessary.
 
 Since ChaCha20 requires an IV regardless, Enchive simply uses the hash
 of the key. This has the additional effect of allowing the client to
