@@ -36,9 +36,11 @@ cleanup_register(FILE *file, const char *name)
     if (file) {
         unsigned i;
         for (i = 0; i < sizeof(cleanup) / sizeof(*cleanup); i++) {
-            cleanup[i].name = name;
-            cleanup[i].file = file;
-            return;
+            if (!cleanup[i].name) {
+                cleanup[i].name = name;
+                cleanup[i].file = file;
+                return;
+            }
         }
     }
     abort();
