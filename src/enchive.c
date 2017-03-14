@@ -695,7 +695,7 @@ default_pubfile(void)
 }
 
 /**
- * Return the default public key file.
+ * Return the default secret key file.
  */
 static char *
 default_secfile(void)
@@ -811,7 +811,7 @@ load_pubkey(const char *file, u8 *key)
 /**
  * Attempt to load and decrypt the secret key stored in a file.
  *
- * The they key is encrypted, attempt to query a key agent. If that
+ * If the key is encrypted, attempt to query a key agent. If that
  * fails (no agent, bad key) prompt the user for a passphrase. If that
  * fails (wrong passphrase), abort the program.
  *
