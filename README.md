@@ -143,6 +143,16 @@ verify its symmetric key before beginning decryption. Otherwise a
 wrong key would only be detected by the MAC after decryption has
 completed.
 
+> Valgrind says Enchive leaks memory.
+
+Enchive only uses dynamic allocation for input/output filename strings
+— avoiding any path length limitations — and for the huge key
+derivation buffer. The lifetime of these strings is the lifetime of
+the entire program, so it's not worth the trouble to free them at the
+last second. In other situations it might still be useful to clean up
+so that Valgrind and friends can do their job. Since Enchive doesn't
+do any complex memory management, there's no need to check for leaks.
+
 ## Encryption/decryption algorithm
 
 The process for encrypting a file:
