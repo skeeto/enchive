@@ -12,10 +12,11 @@ static const char *docs_usage[] = {
 "              <command> [args]",
 "",
 "Commands (unique prefixes accepted):",
-"  keygen      generate a new master keypair",
-"  archive     archive using the public key",
-"  extract     extract from an archive using the secret key",
-"  help        get help on a specific topic",
+"  keygen        generate a new master keypair",
+"  archive       archive using the public key",
+"  extract       extract from an archive using the secret key",
+"  fingerprint   print the master keypair fingerprint",
+"  help          get help on a specific topic",
 "",
 #if ENCHIVE_OPTION_AGENT
 "  --agent[=seconds]      run the key agent after reading a passphrase ["
