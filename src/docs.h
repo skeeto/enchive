@@ -42,12 +42,18 @@ static const char *docs_keygen[] = {
 "  --derive[=<n>]     derive secret key from a passphrase ["
     STR(ENCHIVE_SECKEY_DERIVE_ITERATIONS) "]",
 "  --edit             edit the protection on an existing key",
+"  --fingerprint      print the master key fingerprint"
 "  --iterations <n>   iterations for protection key derivation ["
     STR(ENCHIVE_KEY_DERIVE_ITERATIONS)"]",
 "  --force, -f        overwrite any existing keys (default: no clobber)",
 "  --plain, -u        don't encrypt the secret key with a protection key",
 "",
 "The global --pubkey and --seckey options select the filenames.",
+0};
+
+static const char *docs_fingerprint[] = {
+"usage: enchive fingerprint",
+"  Print the master key fingerprint to standard output.",
 0};
 
 static const char *docs_archive[] = {

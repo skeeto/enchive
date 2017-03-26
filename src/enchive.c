@@ -900,17 +900,41 @@ file_exists(char *filename)
     return 0;
 }
 
+/* Print a nice fingerprint of a key */
+static void
+print_fingerprint(const u8 *key)
+{
+    int i;
+    u8 hash[32];
+    SHA256_CTX sha[1];
+
+    sha256_init(sha);
+    sha256_update(sha, key, 32);
+    sha256_final(sha, hash);
+    fputs("keyid: ", stdout);
+    for (i = 0; i < 32; i += 4) {
+        unsigned long chunk =
+            ((unsigned long)hash[i + 0] << 24) |
+            ((unsigned long)hash[i + 1] << 16) |
+            ((unsigned long)hash[i + 2] <<  8) |
+            ((unsigned long)hash[i + 3] <<  0);
+        printf("%s%08lx", i ? "-" : "", chunk);
+    }
+    putchar('\n');
+}
+
 enum command {
     COMMAND_UNKNOWN = -2,
     COMMAND_AMBIGUOUS = -1,
     COMMAND_KEYGEN,
+    COMMAND_FINGERPRINT,
     COMMAND_ARCHIVE,
     COMMAND_EXTRACT,
     COMMAND_HELP
 };
 
-static const char command_names[][8] = {
-    "keygen", "archive", "extract", "help"
+static const char command_names[][12] = {
+    "keygen", "fingerprint", "archive", "extract", "help"
 };
 
 static enum command
@@ -919,7 +943,7 @@ parse_command(char *command)
     int found = COMMAND_UNKNOWN;
     size_t len = strlen(command);
     int i;
-    for (i = 0; i < 4; i++) {
+    for (i = 0; i < 5; i++) {
         if (strncmp(command, command_names[i], len) == 0) {
             if (found >= 0)
                 return COMMAND_AMBIGUOUS;
@@ -936,6 +960,7 @@ command_keygen(struct optparse *options)
         {"derive",      'd', OPTPARSE_OPTIONAL},
         {"edit"  ,      'e', OPTPARSE_NONE},
         {"force",       'f', OPTPARSE_NONE},
+        {"fingerprint", 'i', OPTPARSE_NONE},
         {"iterations",  'k', OPTPARSE_REQUIRED},
         {"plain",       'u', OPTPARSE_NONE},
         {0, 0, 0}
@@ -951,6 +976,7 @@ command_keygen(struct optparse *options)
     int derive = 0;
     int edit = 0;
     int protect = 1;
+    int fingerprint = 0;
     int key_derive_iterations = ENCHIVE_KEY_DERIVE_ITERATIONS;
     int seckey_derive_iterations = ENCHIVE_SECKEY_DERIVE_ITERATIONS;
 
@@ -978,6 +1004,9 @@ command_keygen(struct optparse *options)
                 break;
             case 'f':
                 clobber = 1;
+                break;
+            case 'i':
+                fingerprint = 1;
                 break;
             case 'k': {
                 char *p;
@@ -1040,8 +1069,37 @@ command_keygen(struct optparse *options)
     }
 
     compute_public(public, secret);
+
+    if (fingerprint) {
+        print_fingerprint(public);
+    }
+
     write_seckey(secfile, secret, protect ? key_derive_iterations : 0);
     write_pubkey(pubfile, public);
+}
+
+static void
+command_fingerprint(struct optparse *options)
+{
+    static const struct optparse_long fingerprint[] = {
+        {0, 0, 0}
+    };
+
+    const char *pubfile = global_pubkey;
+    u8 public[32];
+
+    int option;
+    while ((option = optparse_long(options, fingerprint, 0)) != -1) {
+        switch (option) {
+            default:
+                fatal("%s", options->errmsg);
+        }
+    }
+
+    if (!pubfile)
+        pubfile = default_pubfile();
+    load_pubkey(pubfile, public);
+    print_fingerprint(public);
 }
 
 static void
@@ -1267,6 +1325,9 @@ command_help(struct optparse *options)
         case COMMAND_KEYGEN:
             multiputs(docs_keygen, stdout);
             break;
+        case COMMAND_FINGERPRINT:
+            multiputs(docs_fingerprint, stdout);
+            break;
         case COMMAND_ARCHIVE:
             multiputs(docs_archive, stdout);
             break;
@@ -1375,6 +1436,9 @@ main(int argc, char **argv)
             break;
         case COMMAND_KEYGEN:
             command_keygen(options);
+            break;
+        case COMMAND_FINGERPRINT:
+            command_fingerprint(options);
             break;
         case COMMAND_ARCHIVE:
             command_archive(options);
