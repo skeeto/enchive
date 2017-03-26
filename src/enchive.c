@@ -911,7 +911,6 @@ print_fingerprint(const u8 *key)
     sha256_init(sha);
     sha256_update(sha, key, 32);
     sha256_final(sha, hash);
-    fputs("keyid: ", stdout);
     for (i = 0; i < 16; i += 4) {
         unsigned long chunk =
             ((unsigned long)hash[i + 0] << 24) |
@@ -920,7 +919,6 @@ print_fingerprint(const u8 *key)
             ((unsigned long)hash[i + 3] <<  0);
         printf("%s%08lx", i ? "-" : "", chunk);
     }
-    putchar('\n');
 }
 
 enum command {
@@ -1071,7 +1069,9 @@ command_keygen(struct optparse *options)
     compute_public(public, secret);
 
     if (fingerprint) {
+        fputs("keyid: ", stdout);
         print_fingerprint(public);
+        putchar('\n');
     }
 
     write_seckey(secfile, secret, protect ? key_derive_iterations : 0);
@@ -1100,6 +1100,7 @@ command_fingerprint(struct optparse *options)
         pubfile = default_pubfile();
     load_pubkey(pubfile, public);
     print_fingerprint(public);
+    putchar('\n');
 }
 
 static void
