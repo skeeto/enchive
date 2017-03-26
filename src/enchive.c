@@ -912,7 +912,7 @@ print_fingerprint(const u8 *key)
     sha256_update(sha, key, 32);
     sha256_final(sha, hash);
     fputs("keyid: ", stdout);
-    for (i = 0; i < 32; i += 4) {
+    for (i = 0; i < 16; i += 4) {
         unsigned long chunk =
             ((unsigned long)hash[i + 0] << 24) |
             ((unsigned long)hash[i + 1] << 16) |
