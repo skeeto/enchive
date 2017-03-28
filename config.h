@@ -53,8 +53,8 @@
 
 /* Required for correct builds */
 
-#ifndef _XOPEN_SOURCE
-#  define _XOPEN_SOURCE
+#ifndef _POSIX_C_SOURCE
+#  define _POSIX_C_SOURCE 1
 #endif
 
 #define OPTPARSE_IMPLEMENTATION
