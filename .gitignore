@@ -2,3 +2,4 @@
 enchive
 *.enchive
 enchive-cli.c
+*.elc
