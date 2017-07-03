@@ -549,7 +549,7 @@ secure_entropy(void *buf, size_t len)
     fclose(r);
 }
 
-#elif defined (_WIN32)
+#elif defined(_WIN32)
 #include <windows.h>
 
 static void
@@ -1378,7 +1378,7 @@ main(int argc, char **argv)
     options->permute = 0;
     (void)argc;
 
-   while ((option = optparse_long(options, global, 0)) != -1) {
+    while ((option = optparse_long(options, global, 0)) != -1) {
         switch (option) {
 #if ENCHIVE_OPTION_AGENT
             case 'a':
