@@ -43,7 +43,7 @@ static const char *docs_keygen[] = {
 "  --derive[=<n>]     derive secret key from a passphrase ["
     STR(ENCHIVE_SECKEY_DERIVE_ITERATIONS) "]",
 "  --edit             edit the protection on an existing key",
-"  --fingerprint      print the master keypair fingerprint"
+"  --fingerprint      print the master keypair fingerprint",
 "  --iterations <n>   iterations for protection key derivation ["
     STR(ENCHIVE_KEY_DERIVE_ITERATIONS)"]",
 "  --force, -f        overwrite any existing keys (default: no clobber)",
