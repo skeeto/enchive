@@ -1,0 +1,145 @@
+.TH ENCHIVE 1
+.SH NAME
+enchive \- personal archive encryption
+.SH SYNOPSIS
+.B enchive
+[\fB\-\-version\fR]
+[\fB\-\-help\fR]
+[\fB\-p\fR|\fB\-\-pubkey \fIFILE\fR]
+[\fB\-s\fR|\fB\-\-seckey \fIFILE\fR]
+[\fB\-\-random\-device\fR \fIDEV\fR]
+[\fB\-\-no\-agent\fR|\fB\-\-agent\fR[=\fISECONDS\fR]]
+.br
+.IR command
+.IR [\fIargs\fR ...]
+.SH DESCRIPTION
+.B enchive
+is a program to encrypt files to yourself for long-term archival.
+It's a focused, simple alternative to more complex tools such as GnuPG or encrypted filesystems.
+Like GnuPG, you can safely encrypt files on systems that you don't trust with your secret key.
+.PP
+Files are secured with ChaCha20, Curve25519, and HMAC-SHA256.
+.SH OPTIONS
+.TP
+\fB\-\-agent\fR[=\fISECONDS\fR]
+Runs the key agent for awhile after successfully reading the passphrase.
+The agent will remain resident in memory until a period of inactivity passes.
+Default is 900 seconds (15 minutes).
+.TP
+\fB\-\-no\-agent\fR
+Do not start the key agent (default).
+.TP
+\fB-p, \-\-pubkey\fR \fIFILE\fR
+Specifies the public key file to use for encryption.
+.TP
+\fB\-\-random\-device\fR \fIDEV\fR
+Use \fIDEV\fR as an entropy source instead of \fB/dev/urandom\fR.
+.TP
+\fB-s, \-\-seckey\fR \fIFILE\fR
+Specifies the secret key file to use for decryption.
+.TP
+\fB\-\-version\fR
+Print version information.
+.TP
+\fB\-\-help\fR
+Print a synopsis of the command line interface.
+.SH COMMANDS
+.TP
+\fBkeygen\fR [\fIOPTION\fR]...
+Generates a new keypair either from the random device or a passphrase.
+.RS
+.TP
+\fB\-\-derive\fR[=\fIN\fR], \fB\-d\fR[\fIN\fR]
+Derives the secret key from a passphrase.
+The key will be derived from the passphrase using difficulty exponent \fIN\fR.
+Default is 29.
+.TP
+\fB\-\-edit\fR
+Edits the protection passphrase on an existing key.
+This also regenerates the public key file from the secret key.
+.TP
+\fB\-\-fingerprint\fR
+Prints the public key fingerprint after generation or editing.
+.TP
+\fB\-\-force\fR, \fB\-f\fR
+Overwrites any existing keypair without prompting.
+.TP
+\fB\-\-iterations\fR \fIN\fR
+Sets the difficulty exponent for deriving the protection key from the protection key passphrase.
+Default is 25.
+.TP
+\fB\-\-plain\fR, \fB\-u\fR
+Do not use a protection key, and instead store the secret key unencrypted on the disk.
+Consider using the key agent instead of this option.
+.RE
+.TP
+\fBarchive\fR [\fB\-d\fR|\fB\-\-delete\fR] [\fIINPUT\fR [\fIOUTPUT\fR]]
+Encrypts a single file for archival using only the public key.
+If no output filename is given, the output filename will be the input filename with a \fB.enchive\fR suffix.
+Except for \fB\-\-delete\fR, the original file is untouched.
+If no filenames are given, encrypts standard input to standard output.
+.RS
+.TP
+\fB\-\-delete\fR, \fB\-d\fR
+Delete the original input file after success.
+.RE
+.TP
+\fBextract\fR [\fB\-d\fR|\fB\-\-delete\fR] [\fIINPUT\fR [\fIOUTPUT\fR]]
+Decrypt a single file from archival using the secret key.
+If no output filename is given, the output filename will be the input filename with the \fB.enchive\fR suffix removed.
+Without an output filename, it is an error for the input to lack this suffix.
+If no filenames are given, dencrypt standard input to standard output.
+.RS
+.TP
+\fB\-\-delete\fR, \fB\-d\fR
+Delete the original input file after success.
+.RE
+.TP
+.B fingerprint
+Print the public key fingerprint to standard output.
+.TP
+.B help
+Print help for a specific command.
+.SH ENVIRONMENT
+.TP
+.B TMPDIR
+If $XDG_RUNTIME_DIR is unset, the directory in which to create the agent socket.
+Default is /tmp.
+.TP
+.B XDG_CONFIG_HOME
+The directory under which keys will be created and read.
+Default is $HOME/.config.
+.TP
+.B XDG_RUNTIME_DIR
+The directory in which to create the agent socket.
+.SH FILES
+.TP
+.B $XDG_CONFIG_HOME/enchive/enchive.pub
+The file holding the public key used for encrypting files.
+.TP
+.B $XDG_CONFIG_HOME/enchive/enchive.sec
+The file holding the secret key used for decrypting files.
+.SH EXAMPLES
+.nf
+.B enchive keygen --derive
+.fi
+.PP
+Generate a new keypair from a passphrase prompt.
+.PP
+.nf
+.B enchive archive -d mydata.tar.gz
+.fi
+.PP
+Encrypt \fBmydata.tar.gz\fR to \fBmydata.tar.gz.enchive\fR and delete the unencrypted file.
+.PP
+.nf
+.B enchive extract mydata.tar.gz.enchive
+.fi
+.PP
+Decrypt \fBmydata.tar.gz.enchive\fR to \fBmydata.tar.gz\fR, preserving the original file.
+.SH "SEE ALSO"
+.BR gpg (1)
+.br
+https://github.com/skeeto/enchive
+.br
+http://nullprogram.com/blog/2017/03/12/
