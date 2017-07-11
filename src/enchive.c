@@ -927,12 +927,11 @@ enum command {
     COMMAND_KEYGEN,
     COMMAND_FINGERPRINT,
     COMMAND_ARCHIVE,
-    COMMAND_EXTRACT,
-    COMMAND_HELP
+    COMMAND_EXTRACT
 };
 
 static const char command_names[][12] = {
-    "keygen", "fingerprint", "archive", "extract", "help"
+    "keygen", "fingerprint", "archive", "extract"
 };
 
 static enum command
@@ -1298,50 +1297,6 @@ multiputs(const char **s, FILE *f)
 }
 
 static void
-command_help(struct optparse *options)
-{
-    static const struct optparse_long help[] = {
-        {0, 0, 0}
-    };
-
-    char *command;
-
-    int option;
-    while ((option = optparse_long(options, help, 0)) != -1) {
-        switch (option) {
-            default:
-                fatal("%s", options->errmsg);
-        }
-    }
-
-    command = optparse_arg(options);
-    if (!command)
-        command = "help";
-
-    switch (parse_command(command)) {
-        case COMMAND_UNKNOWN:
-        case COMMAND_AMBIGUOUS:
-            fatal("unknown command -- %s\n", command);
-            break;
-        case COMMAND_KEYGEN:
-            multiputs(docs_keygen, stdout);
-            break;
-        case COMMAND_FINGERPRINT:
-            multiputs(docs_fingerprint, stdout);
-            break;
-        case COMMAND_ARCHIVE:
-            multiputs(docs_archive, stdout);
-            break;
-        case COMMAND_EXTRACT:
-            multiputs(docs_extract, stdout);
-            break;
-        case COMMAND_HELP:
-            multiputs(docs_help, stdout);
-            break;
-    }
-}
-
-static void
 print_usage(FILE *f)
 {
     multiputs(docs_usage, f);
@@ -1446,9 +1401,6 @@ main(int argc, char **argv)
             break;
         case COMMAND_EXTRACT:
             command_extract(options);
-            break;
-        case COMMAND_HELP:
-            command_help(options);
             break;
     }
     return 0;
