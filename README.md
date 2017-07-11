@@ -13,6 +13,17 @@ en'kīv.
 
 Files are secured with ChaCha20, Curve25519, and HMAC-SHA256.
 
+## Installation
+
+Clone this repository, then:
+
+    $ make PREFIX=/usr install
+
+This will install both the compiled binary and manual page under
+`PREFIX`. For staged installs, `DESTDIR` is also supported. The binary
+doesn't have any external dependencies and doesn't actually need to be
+installed before use.
+
 ## Usage
 
 There are only three commands to worry about: `keygen`, `archive`, and

@@ -2,6 +2,7 @@
 .SUFFIXES:
 CC     = cc
 CFLAGS = -ansi -pedantic -Wall -Wextra -O3 -g3
+PREFIX = /usr/local
 
 sources = src/enchive.c src/chacha.c src/curve25519-donna.c src/sha256.c
 objects = $(sources:.c=.o)
@@ -21,6 +22,16 @@ amalgamation: enchive-cli.c
 
 clean:
 	rm -f enchive $(objects) enchive-cli.c
+
+install: enchive enchive.1
+	mkdir -p $(DESTDIR)$(PREFIX)/bin
+	mkdir -p $(DESTDIR)$(PREFIX)/share/man/man1
+	cp enchive $(DESTDIR)$(PREFIX)/bin
+	gzip < enchive.1 > $(DESTDIR)$(PREFIX)/share/man/man1/enchive.1.gz
+
+uninstall:
+	rm $(DESTDIR)$(PREFIX)/bin/enchive
+	rm $(DESTDIR)$(PREFIX)/share/man/man1/enchive.1.gz
 
 .SUFFIXES: .c .o
 .c.o:
