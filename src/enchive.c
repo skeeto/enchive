@@ -242,7 +242,16 @@ static char *storage_directory(char *file);
 #if defined(__unix__) || defined(__APPLE__)
 #include <dirent.h>
 #include <unistd.h>
+#include <sys/stat.h>
 #include <sys/types.h>
+
+/* Return non-zero if path exists and is a directory. */
+static int
+dir_exists(const char *path)
+{
+    struct stat info;
+    return !stat(path, &info) && S_ISDIR(info.st_mode);
+}
 
 /* Use $XDG_CONFIG_HOME/enchive, or $HOME/.config/enchive. */
 static char *
@@ -282,16 +291,14 @@ storage_directory(char *file)
     s = strchr(path + 1, '/');
     while (s) {
         *s = 0;
-        if (mkdir(path, 0700)) {
-            if (errno == EEXIST) {
-                DIR *dir = opendir(path);
-                if (dir)
-                    closedir(dir);
-                else
-                    fatal("%s -- %s", path, strerror(errno));
-            } else {
-                fatal("%s -- %s", path, strerror(errno));
-            }
+        if (dir_exists(path) || !mkdir(path, 0700)) {
+            DIR *dir = opendir(path);
+            if (dir)
+                closedir(dir);
+            else
+                fatal("opendir(%s) -- %s", path, strerror(errno));
+        } else {
+            fatal("mkdir(%s) -- %s", path, strerror(errno));
         }
         *s = '/';
         s = strchr(s + 1, '/');
