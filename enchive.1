@@ -2,16 +2,20 @@
 .SH NAME
 enchive \- personal archive encryption
 .SH SYNOPSIS
+.ad l
+.HP 8
 .B enchive
-[\fB\-\-version\fR]
-[\fB\-\-help\fR]
+[\fB\-\-no\-agent\fR]
+[\-\fBa\fR|\fB\-\-agent\fR[=\fISECONDS\fR]]
+[\fB\-\-random\-device\fR \fIDEV\fR]
 [\fB\-p\fR|\fB\-\-pubkey \fIFILE\fR]
 [\fB\-s\fR|\fB\-\-seckey \fIFILE\fR]
-[\fB\-\-random\-device\fR \fIDEV\fR]
-[\fB\-\-no\-agent\fR|\fB\-\-agent\fR[=\fISECONDS\fR]]
+[\fB\-\-version\fR]
+[\fB\-\-help\fR]
 .br
 .IR command
 .IR [\fIargs\fR ...]
+.ad
 .SH DESCRIPTION
 .B enchive
 is a program to encrypt files to yourself for long-term archival.
@@ -44,10 +48,11 @@ Print version information.
 \fB\-\-help\fR
 Print a synopsis of the command line interface.
 .SH COMMANDS
+Any unique prefix for a command is accepted. For example, the command \fBa\fR would mean \fBarchive\fR.
 .TP
 \fBkeygen\fR [\fIOPTION\fR]...
 Generates a new keypair either from the random device or a passphrase.
-.RS
+.RS 4
 .TP
 \fB\-\-derive\fR[=\fIN\fR], \fB\-d\fR[\fIN\fR]
 Derives the secret key from a passphrase.
@@ -78,7 +83,7 @@ Encrypts a single file for archival using only the public key.
 If no output filename is given, the output filename will be the input filename with a \fB.enchive\fR suffix.
 Except for \fB\-\-delete\fR, the original file is untouched.
 If no filenames are given, encrypts standard input to standard output.
-.RS
+.RS 4
 .TP
 \fB\-\-delete\fR, \fB\-d\fR
 Delete the original input file after success.
@@ -89,7 +94,7 @@ Decrypt a single file from archival using the secret key.
 If no output filename is given, the output filename will be the input filename with the \fB.enchive\fR suffix removed.
 Without an output filename, it is an error for the input to lack this suffix.
 If no filenames are given, dencrypt standard input to standard output.
-.RS
+.RS 4
 .TP
 \fB\-\-delete\fR, \fB\-d\fR
 Delete the original input file after success.
