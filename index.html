@@ -1,0 +1,327 @@
+<!-- Creator     : groff version 1.22.3 -->
+<!-- CreationDate: Thu Jul 13 12:53:38 2017 -->
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+"http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta name="generator" content="groff -Thtml, see www.gnu.org">
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<meta name="Content-Style" content="text/css">
+<style type="text/css">
+       p       { margin-top: 0; margin-bottom: 0; vertical-align: top }
+       pre     { margin-top: 0; margin-bottom: 0; vertical-align: top }
+       table   { margin-top: 0; margin-bottom: 0; vertical-align: top }
+       h1      { text-align: center }
+</style>
+<link rel="stylesheet" content="text/css" href="man.css"/>
+<title>ENCHIVE</title>
+
+</head>
+<body>
+
+<h1 align="center">ENCHIVE</h1>
+
+<a href="#NAME">NAME</a><br>
+<a href="#SYNOPSIS">SYNOPSIS</a><br>
+<a href="#DESCRIPTION">DESCRIPTION</a><br>
+<a href="#OPTIONS">OPTIONS</a><br>
+<a href="#COMMANDS">COMMANDS</a><br>
+<a href="#ENVIRONMENT">ENVIRONMENT</a><br>
+<a href="#FILES">FILES</a><br>
+<a href="#EXAMPLES">EXAMPLES</a><br>
+<a href="#SEE ALSO">SEE ALSO</a><br>
+
+<hr>
+
+
+<h2>NAME
+<a name="NAME"></a>
+</h2>
+
+
+<p style="margin-left:11%; margin-top: 1em">enchive -
+personal archive encryption</p>
+
+<h2>SYNOPSIS
+<a name="SYNOPSIS"></a>
+</h2>
+
+
+<table width="100%" border="0" rules="none" frame="void"
+       cellspacing="0" cellpadding="0">
+<tr valign="top" align="left">
+<td width="11%"></td>
+<td width="11%">
+
+
+<p style="margin-top: 1em"><b>enchive</b></p></td>
+<td width="1%"></td>
+<td width="77%">
+
+
+<p style="margin-top: 1em">[<b>--no-agent</b>]
+[-<b>a</b>|<b>--agent</b>[=<i>SECONDS</i>]]
+[<b>--random-device</b> <i>DEV</i>]
+[<b>-p</b>|<b>--pubkey</b> <i>FILE</i>]
+[<b>-s</b>|<b>--seckey</b> <i>FILE</i>] [<b>--version</b>]
+[<b>--help</b>]</p> </td></tr>
+</table>
+
+<p style="margin-left:23%;"><i>command [args</i>...]</p>
+
+<h2>DESCRIPTION
+<a name="DESCRIPTION"></a>
+</h2>
+
+
+<p style="margin-left:11%; margin-top: 1em"><b>enchive</b>
+is a program to encrypt files to yourself for long-term
+archival. It&rsquo;s a focused, simple alternative to more
+complex tools such as GnuPG or encrypted filesystems. Like
+GnuPG, you can safely encrypt files on systems that you
+don&rsquo;t trust with your secret key.</p>
+
+<p style="margin-left:11%; margin-top: 1em">Files are
+secured with ChaCha20, Curve25519, and HMAC-SHA256.</p>
+
+<h2>OPTIONS
+<a name="OPTIONS"></a>
+</h2>
+
+
+
+<p style="margin-left:11%; margin-top: 1em"><b>--agent</b>[=<i>SECONDS</i>]</p>
+
+<p style="margin-left:22%;">Runs the key agent for awhile
+after successfully reading the passphrase. The agent will
+remain resident in memory until a period of inactivity
+passes. Default is 900 seconds (15 minutes).</p>
+
+<p style="margin-left:11%;"><b>--no-agent</b></p>
+
+<p style="margin-left:22%;">Do not start the key agent
+(default).</p>
+
+<p style="margin-left:11%;"><b>-p, --pubkey</b>
+<i>FILE</i></p>
+
+<p style="margin-left:22%;">Specifies the public key file
+to use for encryption.</p>
+
+<p style="margin-left:11%;"><b>--random-device</b>
+<i>DEV</i></p>
+
+<p style="margin-left:22%;">Use <i>DEV</i> as an entropy
+source instead of <b>/dev/urandom</b>.</p>
+
+<p style="margin-left:11%;"><b>-s, --seckey</b>
+<i>FILE</i></p>
+
+<p style="margin-left:22%;">Specifies the secret key file
+to use for decryption.</p>
+
+<p style="margin-left:11%;"><b>--version</b></p>
+
+<p style="margin-left:22%;">Print version information.</p>
+
+<table width="100%" border="0" rules="none" frame="void"
+       cellspacing="0" cellpadding="0">
+<tr valign="top" align="left">
+<td width="11%"></td>
+<td width="9%">
+
+
+<p><b>--help</b></p></td>
+<td width="2%"></td>
+<td width="72%">
+
+
+<p>Print a synopsis of the command line interface.</p></td>
+<td width="6%">
+</td></tr>
+</table>
+
+<h2>COMMANDS
+<a name="COMMANDS"></a>
+</h2>
+
+
+<p style="margin-left:11%; margin-top: 1em">Any unique
+prefix for a command is accepted. For example, the command
+<b>a</b> would mean <b>archive</b>. <b><br>
+keygen</b> [<i>OPTION</i>]...</p>
+
+<p style="margin-left:22%;">Generates a new keypair either
+from the random device or a passphrase.</p>
+
+<p style="margin-left:17%;"><b>--derive</b>[=<i>N</i>],
+<b>-d</b>[<i>N</i>]</p>
+
+<p style="margin-left:28%;">Derives the secret key from a
+passphrase. The key will be derived from the passphrase
+using difficulty exponent <i>N</i>. Default is 29.</p>
+
+<table width="100%" border="0" rules="none" frame="void"
+       cellspacing="0" cellpadding="0">
+<tr valign="top" align="left">
+<td width="17%"></td>
+<td width="9%">
+
+
+<p><b>--edit</b></p></td>
+<td width="2%"></td>
+<td width="72%">
+
+
+<p>Edits the protection passphrase on an existing key. This
+also regenerates the public key file from the secret
+key.</p> </td></tr>
+</table>
+
+<p style="margin-left:17%;"><b>--fingerprint</b></p>
+
+<p style="margin-left:28%;">Prints the public key
+fingerprint after generation or editing.</p>
+
+<p style="margin-left:17%;"><b>--force</b>, <b>-f</b></p>
+
+<p style="margin-left:28%;">Overwrites any existing keypair
+without prompting.</p>
+
+<p style="margin-left:17%;"><b>--iterations</b>
+<i>N</i></p>
+
+<p style="margin-left:28%;">Sets the difficulty exponent
+for deriving the protection key from the protection key
+passphrase. Default is 25.</p>
+
+<p style="margin-left:17%;"><b>--plain</b>, <b>-u</b></p>
+
+<p style="margin-left:28%;">Do not use a protection key,
+and instead store the secret key unencrypted on the disk.
+Consider using the key agent instead of this option.</p>
+
+<p style="margin-left:11%;"><b>archive</b>
+[<b>-d</b>|<b>--delete</b>] [<i>INPUT</i>
+[<i>OUTPUT</i>]]</p>
+
+<p style="margin-left:22%;">Encrypts a single file for
+archival using only the public key. If no output filename is
+given, the output filename will be the input filename with a
+<b>.enchive</b> suffix. Except for <b>--delete</b>, the
+original file is untouched. If no filenames are given,
+encrypts standard input to standard output.</p>
+
+<p style="margin-left:17%;"><b>--delete</b>, <b>-d</b></p>
+
+<p style="margin-left:28%;">Delete the original input file
+after success.</p>
+
+<p style="margin-left:11%;"><b>extract</b>
+[<b>-d</b>|<b>--delete</b>] [<i>INPUT</i>
+[<i>OUTPUT</i>]]</p>
+
+<p style="margin-left:22%;">Decrypt a single file from
+archival using the secret key. If no output filename is
+given, the output filename will be the input filename with
+the <b>.enchive</b> suffix removed. Without an output
+filename, it is an error for the input to lack this suffix.
+If no filenames are given, dencrypt standard input to
+standard output.</p>
+
+<p style="margin-left:17%;"><b>--delete</b>, <b>-d</b></p>
+
+<p style="margin-left:28%;">Delete the original input file
+after success.</p>
+
+<p style="margin-left:11%;"><b>fingerprint</b></p>
+
+<p style="margin-left:22%;">Print the public key
+fingerprint to standard output.</p>
+
+<h2>ENVIRONMENT
+<a name="ENVIRONMENT"></a>
+</h2>
+
+
+<table width="100%" border="0" rules="none" frame="void"
+       cellspacing="0" cellpadding="0">
+<tr valign="top" align="left">
+<td width="11%"></td>
+<td width="9%">
+
+
+<p style="margin-top: 1em"><b>TMPDIR</b></p></td>
+<td width="2%"></td>
+<td width="78%">
+
+
+<p style="margin-top: 1em">If $XDG_RUNTIME_DIR is unset,
+the directory in which to create the agent socket. Default
+is /tmp.</p></td></tr>
+</table>
+
+<p style="margin-left:11%;"><b>XDG_CONFIG_HOME</b></p>
+
+<p style="margin-left:22%;">The directory under which keys
+will be created and read. Default is $HOME/.config.</p>
+
+<p style="margin-left:11%;"><b>XDG_RUNTIME_DIR</b></p>
+
+<p style="margin-left:22%;">The directory in which to
+create the agent socket.</p>
+
+<h2>FILES
+<a name="FILES"></a>
+</h2>
+
+
+
+<p style="margin-left:11%; margin-top: 1em"><b>$XDG_CONFIG_HOME/enchive/enchive.pub</b></p>
+
+<p style="margin-left:22%;">The file holding the public key
+used for encrypting files.</p>
+
+
+<p style="margin-left:11%;"><b>$XDG_CONFIG_HOME/enchive/enchive.sec</b></p>
+
+<p style="margin-left:22%;">The file holding the secret key
+used for decrypting files.</p>
+
+<h2>EXAMPLES
+<a name="EXAMPLES"></a>
+</h2>
+
+
+<p style="margin-left:11%; margin-top: 1em"><b>enchive
+keygen --derive</b></p>
+
+<p style="margin-left:11%; margin-top: 1em">Generate a new
+keypair from a passphrase prompt.</p>
+
+<p style="margin-left:11%; margin-top: 1em"><b>enchive
+archive -d mydata.tar.gz</b></p>
+
+<p style="margin-left:11%; margin-top: 1em">Encrypt
+<b>mydata.tar.gz</b> to <b>mydata.tar.gz.enchive</b> and
+delete the unencrypted file.</p>
+
+<p style="margin-left:11%; margin-top: 1em"><b>enchive
+extract mydata.tar.gz.enchive</b></p>
+
+<p style="margin-left:11%; margin-top: 1em">Decrypt
+<b>mydata.tar.gz.enchive</b> to <b>mydata.tar.gz</b>,
+preserving the original file.</p>
+
+<h2>SEE ALSO
+<a name="SEE ALSO"></a>
+</h2>
+
+
+<p style="margin-left:11%; margin-top: 1em"><b>gpg</b>(1)
+<br>
+https://github.com/skeeto/enchive <br>
+ http://nullprogram.com/blog/2017/03/12/</p>
+<hr>
+</body>
+</html>

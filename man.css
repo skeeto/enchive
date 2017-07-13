@@ -1,0 +1,22 @@
+html {
+    background: lightgray;
+}
+
+body {
+    background: white;
+    padding: 15px;
+    font: 14px monospace;
+    max-width: 700px;
+    margin: auto;
+    text-align: justify;
+}
+
+body > a, body > br, body > hr {
+    display: none;
+}
+
+p, br {
+    display: block;
+    margin-bottom: 0.5em;
+    content: " ";
+}
