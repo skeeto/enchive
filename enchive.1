@@ -5,16 +5,31 @@ enchive \- personal archive encryption
 .ad l
 .HP 8
 .B enchive
-[\fB\-\-no\-agent\fR]
-[\-\fBa\fR|\fB\-\-agent\fR[=\fISECONDS\fR]]
-[\fB\-\-random\-device\fR \fIDEV\fR]
-[\fB\-p\fR|\fB\-\-pubkey \fIFILE\fR]
-[\fB\-s\fR|\fB\-\-seckey \fIFILE\fR]
+[\-\fBa\fR[\fIseconds\fR]|\fB\-A\fR]
+[\fB\-r \fIdevice\fR]
+[\fB\-p \fIpubkey\fR]
+[\fB\-s \fIseckey\fR]
+.br
 [\fB\-\-version\fR]
 [\fB\-\-help\fR]
+.RS
 .br
-.IR command
-.IR [\fIargs\fR ...]
+.B keygen
+[\fB\-d\fR[\fIN\fR]]
+[\fB\-e\fR]
+[\fB\-f\fR]
+[\fB\-i\fR]
+[\fB\-k\fR \fIN\fR]
+[\fB\-u\fR]
+.br
+.B archive
+[\fB\-d\fR]
+.br
+.B extract
+[\fB\-d\fR]
+.br
+.B fingerprint
+.RE
 .ad
 .SH DESCRIPTION
 .B enchive
@@ -25,21 +40,21 @@ Like GnuPG, you can safely encrypt files on systems that you don't trust with yo
 Files are secured with ChaCha20, Curve25519, and HMAC-SHA256.
 .SH OPTIONS
 .TP
-\fB\-\-agent\fR[=\fISECONDS\fR]
+\fB\-a\fR \fIseconds\fR, \fB\-\-agent\fR[=\fIseconds\fR]
 Runs the key agent for awhile after successfully reading the passphrase.
 The agent will remain resident in memory until a period of inactivity passes.
 Default is 900 seconds (15 minutes).
 .TP
-\fB\-\-no\-agent\fR
+\fB\-A\fB, \fB\-\-no\-agent\fR
 Do not start the key agent (default).
 .TP
-\fB-p, \-\-pubkey\fR \fIFILE\fR
+\fB-p, \-\-pubkey\fR \fIfile\fR
 Specifies the public key file to use for encryption.
 .TP
-\fB\-\-random\-device\fR \fIDEV\fR
-Use \fIDEV\fR as an entropy source instead of \fB/dev/urandom\fR.
+\fB\-r\fR, \fB\-\-random\-device\fR \fIdevice\fR
+Use \fIdevice\fR as an entropy source instead of \fB/dev/urandom\fR.
 .TP
-\fB-s, \-\-seckey\fR \fIFILE\fR
+\fB-s, \-\-seckey\fR \fIfile\fR
 Specifies the secret key file to use for decryption.
 .TP
 \fB\-\-version\fR
@@ -54,26 +69,26 @@ Any unique prefix for a command is accepted. For example, the command \fBa\fR wo
 Generates a new keypair either from the random device or a passphrase.
 .RS 4
 .TP
-\fB\-\-derive\fR[=\fIN\fR], \fB\-d\fR[\fIN\fR]
+\fB\-d\fR[\fIN\fR], \fB\-\-derive\fR[=\fIN\fR]
 Derives the secret key from a passphrase.
 The key will be derived from the passphrase using difficulty exponent \fIN\fR.
 Default is 29.
 .TP
-\fB\-\-edit\fR
+\fB\-e\fR, \fB\-\-edit\fR
 Edits the protection passphrase on an existing key.
 This also regenerates the public key file from the secret key.
 .TP
-\fB\-\-fingerprint\fR
-Prints the public key fingerprint after generation or editing.
-.TP
-\fB\-\-force\fR, \fB\-f\fR
+\fB\-f\fR, \fB\-\-force\fR
 Overwrites any existing keypair without prompting.
 .TP
-\fB\-\-iterations\fR \fIN\fR
+\fB\-i\fR, \fB\-\-fingerprint\fR
+Prints the public key fingerprint after generation or editing.
+.TP
+\fB\-k\fR \fIN\fR, \fB\-\-iterations\fR \fIN\fR
 Sets the difficulty exponent for deriving the protection key from the protection key passphrase.
 Default is 25.
 .TP
-\fB\-\-plain\fR, \fB\-u\fR
+\fB\-u\fR, \fB\-\-plain\fR
 Do not use a protection key, and instead store the secret key unencrypted on the disk.
 Consider using the key agent instead of this option.
 .RE
@@ -85,7 +100,7 @@ Except for \fB\-\-delete\fR, the original file is untouched.
 If no filenames are given, encrypts standard input to standard output.
 .RS 4
 .TP
-\fB\-\-delete\fR, \fB\-d\fR
+\fB\-d\fR, \fB\-\-delete\fR
 Delete the original input file after success.
 .RE
 .TP
@@ -96,7 +111,7 @@ Without an output filename, it is an error for the input to lack this suffix.
 If no filenames are given, dencrypt standard input to standard output.
 .RS 4
 .TP
-\fB\-\-delete\fR, \fB\-d\fR
+\fB\-d\fR, \fB\-\-delete\fR
 Delete the original input file after success.
 .RE
 .TP
