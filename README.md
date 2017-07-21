@@ -13,7 +13,7 @@ en'kīv.
 
 Files are secured with ChaCha20, Curve25519, and HMAC-SHA256.
 
-* [`enchive(1)`](http://nullprogram.com/enchive/)
+Manual page: [`enchive(1)`](http://nullprogram.com/enchive/)
 
 ## Installation
 
