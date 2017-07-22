@@ -1169,7 +1169,7 @@ command_archive(struct optparse *options)
     if (outfile) {
         out = fopen(outfile, "wb");
         if (!out)
-            fatal("could not open output file -- %s", infile);
+            fatal("could not open output file -- %s", outfile);
         cleanup_register(out, outfile);
     }
 
