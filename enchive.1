@@ -7,10 +7,9 @@ enchive \- personal archive encryption
 .HP 8
 .B enchive
 [\-\fBa\fR[\fIseconds\fR]|\fB\-A\fR]
-[\fB\-r \fIdevice\fR]
-[\fB\-p \fIpubkey\fR]
-[\fB\-s \fIseckey\fR]
-.br
+[\fB\-r\ \fIdevice\fR]
+[\fB\-p\ \fIpubkey\fR]
+[\fB\-s\ \fIseckey\fR]
 [\fB\-\-version\fR]
 [\fB\-\-help\fR]
 .RS
@@ -20,7 +19,7 @@ enchive \- personal archive encryption
 [\fB\-e\fR]
 [\fB\-f\fR]
 [\fB\-i\fR]
-[\fB\-k\fR \fIN\fR]
+[\fB\-k\fR\ \fIN\fR]
 [\fB\-u\fR]
 .br
 .B archive
@@ -50,13 +49,13 @@ Default is 900 seconds (15 minutes).
 \fB\-A\fB, \fB\-\-no\-agent\fR
 Do not start the key agent (default).
 .TP
-\fB-p, \-\-pubkey\fR \fIfile\fR
+\fB\-p, \-\-pubkey\fR \fIfile\fR
 Specifies the public key file to use for encryption.
 .TP
 \fB\-r\fR, \fB\-\-random\-device\fR \fIdevice\fR
 Use \fIdevice\fR as an entropy source instead of \fB/dev/urandom\fR.
 .TP
-\fB-s, \-\-seckey\fR \fIfile\fR
+\fB\-s, \-\-seckey\fR \fIfile\fR
 Specifies the secret key file to use for decryption.
 .TP
 \fB\-\-version\fR
@@ -140,13 +139,13 @@ The file holding the public key used for encrypting files.
 The file holding the secret key used for decrypting files.
 .SH EXAMPLES
 .nf
-.B enchive keygen --derive
+.B enchive keygen \-\-derive
 .fi
 .PP
 Generate a new keypair from a passphrase prompt.
 .PP
 .nf
-.B enchive archive -d mydata.tar.gz
+.B enchive archive \-d mydata.tar.gz
 .fi
 .PP
 Encrypt \fBmydata.tar.gz\fR to \fBmydata.tar.gz.enchive\fR and delete the unencrypted file.
