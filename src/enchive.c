@@ -22,8 +22,10 @@ static int global_agent_timeout = ENCHIVE_AGENT_TIMEOUT;
 static int global_agent_timeout = 0;
 #endif
 
+static const char enchive_suffix[] = ".enchive";
+
 static struct {
-    const char *name;
+    char *name;
     FILE *file;
 } cleanup[2];
 
@@ -31,7 +33,7 @@ static struct {
  * Register a file for deletion should fatal() be called.
  */
 static void
-cleanup_register(FILE *file, const char *name)
+cleanup_register(FILE *file, char *name)
 {
     if (file) {
         unsigned i;
@@ -58,6 +60,15 @@ cleanup_closed(FILE *file)
     abort();
 }
 
+/* Free filename strings in cleanup registry. */
+static void
+cleanup_free(void)
+{
+    size_t i;
+    for (i = 0; i < sizeof(cleanup) / sizeof(*cleanup); i++)
+        free(cleanup[i].name);
+}
+
 /**
  * Print a message, cleanup, and exit the program with a failure code.
  */
@@ -73,7 +84,8 @@ fatal(const char *fmt, ...)
     for (i = 0; i < sizeof(cleanup) / sizeof(*cleanup); i++) {
         if (cleanup[i].file)
             fclose(cleanup[i].file);
-        remove(cleanup[i].name);
+        if (cleanup[i].name)
+            remove(cleanup[i].name);
     }
     va_end(ap);
     exit(EXIT_FAILURE);
@@ -91,6 +103,60 @@ warning(const char *fmt, ...)
     vfprintf(stderr, fmt, ap);
     fputc('\n', stderr);
     va_end(ap);
+}
+
+/**
+ * Return a copy of S, which may be NULL.
+ * Abort the program if out of memory.
+ */
+static char *
+dupstr(const char *s)
+{
+    char *copy = 0;
+    if (s) {
+        size_t len = strlen(s) + 1;
+        copy = malloc(len);
+        if (!copy)
+            fatal("out of memory");
+        memcpy(copy, s, len);
+    }
+    return copy;
+}
+
+/**
+ * Concatenate N strings as a new string.
+ * Abort the program if out of memory.
+ */
+static char *
+joinstr(int n, ...)
+{
+    int i;
+    va_list ap;
+    char *p, *str;
+    size_t len = 1;
+
+    va_start(ap, n);
+    for (i = 0; i < n; i++) {
+        char *s = va_arg(ap, char *);
+        len += strlen(s);
+    }
+    va_end(ap);
+
+    p = str = malloc(len);
+    if (!str)
+        fatal("out of memory");
+
+    va_start(ap, n);
+    for (i = 0; i < n; i++) {
+        char *s = va_arg(ap, char *);
+        size_t slen = strlen(s);
+        memcpy(p, s, slen);
+        p += slen;
+    }
+    va_end(ap);
+
+    *p = 0;
+    return str;
 }
 
 #if ENCHIVE_OPTION_AGENT
@@ -259,33 +325,20 @@ storage_directory(char *file)
 {
     static const char enchive[] = "/enchive/";
     static const char config[] = "/.config";
-    size_t filelen = strlen(file);
     char *xdg_config_home = getenv("XDG_CONFIG_HOME");
-    size_t pathlen;
     char *path, *s;
 
     if (!xdg_config_home) {
-        size_t homelen;
         char *home = getenv("HOME");
         if (!home)
             fatal("no $HOME or $XDG_CONFIG_HOME, giving up");
         if (home[0] != '/')
             fatal("$HOME is not absolute");
-        homelen = strlen(home);
-
-        pathlen = homelen + sizeof(config) + sizeof(enchive) + filelen - 1;
-        path = malloc(pathlen);
-        if (!path)
-            fatal("out of memory");
-        sprintf(path, "%s%s%s%s", home, config, enchive, file);
+        path = joinstr(4, home, config, enchive, file);
     } else {
         if (xdg_config_home[0] != '/')
             fatal("$XDG_CONFIG_HOME is not absolute");
-        pathlen = strlen(xdg_config_home) + sizeof(enchive) + filelen;
-        path = malloc(pathlen);
-        if (!path)
-            fatal("out of memory");
-        sprintf(path, "%s%s%s", xdg_config_home, enchive, file);
+        path = joinstr(3, xdg_config_home, enchive, file);
     }
 
     s = strchr(path + 1, '/');
@@ -314,29 +367,26 @@ storage_directory(char *file)
 static char *
 storage_directory(char *file)
 {
+    char *parent;
     static const char enchive[] = "\\enchive\\";
-    char *path;
-    size_t filelen = strlen(file);
     char *appdata = getenv("APPDATA");
-    size_t appdatalen;
     if (!appdata)
         fatal("$APPDATA is unset");
-    appdatalen = strlen(appdata);
 
-    path = malloc(appdatalen + sizeof(enchive) + filelen);
-    sprintf(path, "%s%s", appdata, enchive);
-    if (!CreateDirectory(path, 0)) {
+    parent = joinstr(2, appdata, enchive);
+    if (!CreateDirectory(parent, 0)) {
         if (GetLastError() == ERROR_PATH_NOT_FOUND) {
             fatal("$APPDATA directory doesn't exist");
         } else { /* ERROR_ALREADY_EXISTS */
-            DWORD attr = GetFileAttributes(path);
+            DWORD attr = GetFileAttributes(parent);
             if ((attr == INVALID_FILE_ATTRIBUTES) ||
                 !(attr & FILE_ATTRIBUTE_DIRECTORY))
-                fatal("%s is not a directory", path);
+                fatal("%s is not a directory", parent);
         }
     }
-    sprintf(path, "%s%s%s", appdata, enchive, file);
-    return path;
+    free(parent);
+
+    return joinstr(3, appdata, enchive, file);
 }
 
 #endif /* _WIN32 */
@@ -738,7 +788,7 @@ write_pubkey(char *file, u8 *key)
  * Write the secret key to a file, encrypting it if necessary.
  */
 static void
-write_seckey(const char *file, const u8 *seckey, int iexp)
+write_seckey(char *file, const u8 *seckey, int iexp)
 {
     FILE *secfile;
     chacha_ctx cha[1];
@@ -970,8 +1020,8 @@ command_keygen(struct optparse *options)
         {0, 0, 0}
     };
 
-    char *pubfile = global_pubkey;
-    char *secfile = global_seckey;
+    char *pubfile = dupstr(global_pubkey);
+    char *secfile = dupstr(global_seckey);
     int pubfile_exists;
     int secfile_exists;
     u8 public[32];
@@ -1091,7 +1141,7 @@ command_fingerprint(struct optparse *options)
         {0, 0, 0}
     };
 
-    const char *pubfile = global_pubkey;
+    char *pubfile = dupstr(global_pubkey);
     u8 public[32];
 
     int option;
@@ -1105,6 +1155,8 @@ command_fingerprint(struct optparse *options)
     if (!pubfile)
         pubfile = default_pubfile();
     load_pubkey(pubfile, public);
+    free(pubfile);
+
     print_fingerprint(public);
     putchar('\n');
 }
@@ -1122,7 +1174,7 @@ command_archive(struct optparse *options)
     char *outfile;
     FILE *in = stdin;
     FILE *out = stdout;
-    char *pubfile = global_pubkey;
+    char *pubfile = dupstr(global_pubkey);
     int delete = 0;
 
     /* Workspace */
@@ -1147,6 +1199,7 @@ command_archive(struct optparse *options)
     if (!pubfile)
         pubfile = default_pubfile();
     load_pubkey(pubfile, public);
+    free(pubfile);
 
     infile = optparse_arg(options);
     if (infile) {
@@ -1155,16 +1208,10 @@ command_archive(struct optparse *options)
             fatal("could not open input file -- %s", infile);
     }
 
-    outfile = optparse_arg(options);
+    outfile = dupstr(optparse_arg(options));
     if (!outfile && infile) {
         /* Generate an output filename. */
-        static const char suffix[] = ".enchive";
-        size_t len = strlen(infile);
-        outfile = malloc(len + sizeof(suffix));
-        if (!outfile)
-            fatal("out of memory");
-        memcpy(outfile, infile, len);
-        memcpy(outfile + len, suffix, sizeof(suffix));
+        outfile = joinstr(2, infile, enchive_suffix);
     }
     if (outfile) {
         out = fopen(outfile, "wb");
@@ -1198,6 +1245,7 @@ command_archive(struct optparse *options)
 
     if (delete && infile)
         remove(infile);
+
 }
 
 static void
@@ -1213,7 +1261,7 @@ command_extract(struct optparse *options)
     char *outfile;
     FILE *in = stdin;
     FILE *out = stdout;
-    char *secfile = global_seckey;
+    char *secfile = dupstr(global_seckey);
     int delete = 0;
 
     /* Workspace */
@@ -1238,6 +1286,7 @@ command_extract(struct optparse *options)
     if (!secfile)
         secfile = default_secfile();
     load_seckey(secfile, secret);
+    free(secfile);
 
     infile = optparse_arg(options);
     if (infile) {
@@ -1246,18 +1295,14 @@ command_extract(struct optparse *options)
             fatal("could not open input file -- %s", infile);
     }
 
-    outfile = optparse_arg(options);
+    outfile = dupstr(optparse_arg(options));
     if (!outfile && infile) {
         /* Generate an output filename. */
-        static const char suffix[] = ".enchive";
-        size_t slen = sizeof(suffix) - 1;
+        size_t slen = sizeof(enchive_suffix) - 1;
         size_t len = strlen(infile);
-        if (len <= slen || strcmp(suffix, infile + len - slen) != 0)
+        if (len <= slen || strcmp(enchive_suffix, infile + len - slen) != 0)
             fatal("could not determine output filename from %s", infile);
-        outfile = malloc(len - slen + 1);
-        if (!outfile)
-            fatal("out of memory");
-        memcpy(outfile, infile, len - slen);
+        outfile = dupstr(infile);
         outfile[len - slen] = 0;
     }
     if (outfile) {
@@ -1410,5 +1455,7 @@ main(int argc, char **argv)
             command_extract(options);
             break;
     }
+
+    cleanup_free();
     return 0;
 }
