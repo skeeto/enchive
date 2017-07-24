@@ -617,7 +617,7 @@ secure_entropy(void *buf, size_t len)
 {
     FILE *r = fopen(global_random_device, "rb");
     if (!r)
-        fatal("failed to open /dev/urandom");
+        fatal("failed to open %s", global_random_device);
     if (!fread(buf, len, 1, r))
         fatal("failed to gather entropy");
     fclose(r);
