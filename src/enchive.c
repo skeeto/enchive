@@ -48,6 +48,9 @@ cleanup_register(FILE *file, char *name)
     abort();
 }
 
+/**
+ * Update cleanup registry to indicate FILE has been closed.
+ */
 static void
 cleanup_closed(FILE *file)
 {
@@ -60,7 +63,9 @@ cleanup_closed(FILE *file)
     abort();
 }
 
-/* Free filename strings in cleanup registry. */
+/**
+ * Free resources held by the cleanup registry.
+ */
 static void
 cleanup_free(void)
 {
@@ -159,6 +164,16 @@ joinstr(int n, ...)
     return str;
 }
 
+/**
+ * Read the protection key from a key agent identified by its IV.
+ */
+static int agent_read(const u8 *key, const u8 *id);
+
+/**
+ * Serve the protection key on a key agent identified by its IV.
+ */
+static int agent_run(const u8 *key, const u8 *id);
+
 #if ENCHIVE_OPTION_AGENT
 #include <poll.h>
 #include <unistd.h>
@@ -166,6 +181,9 @@ joinstr(int n, ...)
 #include <sys/stat.h>
 #include <sys/socket.h>
 
+/**
+ * Fill ADDR with a unix domain socket name for the agent.
+ */
 static int
 agent_addr(struct sockaddr_un *addr, const u8 *iv)
 {
@@ -187,9 +205,6 @@ agent_addr(struct sockaddr_un *addr, const u8 *iv)
     }
 }
 
-/**
- * Read the protection key from a unix socket identified by its IV.
- */
 static int
 agent_read(u8 *key, const u8 *iv)
 {
@@ -209,9 +224,6 @@ agent_read(u8 *key, const u8 *iv)
     return success;
 }
 
-/**
- * Serve the protection key on a unix socket identified by its IV.
- */
 static int
 agent_run(const u8 *key, const u8 *iv)
 {
@@ -311,7 +323,9 @@ static char *storage_directory(char *file);
 #include <sys/stat.h>
 #include <sys/types.h>
 
-/* Return non-zero if path exists and is a directory. */
+/**
+ * Return non-zero if path exists and is a directory. 
+ */
 static int
 dir_exists(const char *path)
 {
@@ -319,7 +333,9 @@ dir_exists(const char *path)
     return !stat(path, &info) && S_ISDIR(info.st_mode);
 }
 
-/* Use $XDG_CONFIG_HOME/enchive, or $HOME/.config/enchive. */
+/**
+ * Use $XDG_CONFIG_HOME/enchive, or $HOME/.config/enchive.
+ */
 static char *
 storage_directory(char *file)
 {
@@ -391,6 +407,9 @@ storage_directory(char *file)
 
 #endif /* _WIN32 */
 
+/**
+ * Read a passphrase directly from the keyboard without echo.
+ */
 static void get_passphrase(char *buf, size_t len, char *prompt);
 
 /**
@@ -480,7 +499,6 @@ get_passphrase(char *buf, size_t len, char *prompt)
 
 /**
  * Create/truncate a file with paranoid permissions using OS calls.
- * Abort the program if the entropy could not be retrieved.
  */
 static FILE *secure_creat(const char *file);
 
@@ -589,6 +607,7 @@ key_derive(const char *passphrase, u8 *buf, int iexp, const u8 *salt)
 
 /**
  * Get secure entropy suitable for key generation from OS.
+ * Abort the program if the entropy could not be retrieved.
  */
 static void secure_entropy(void *buf, size_t len);
 
@@ -946,6 +965,9 @@ load_seckey(const char *file, u8 *seckey)
     }
 }
 
+/**
+ * Return 1 if file exists, or 0 if it doesn't.
+ */
 static int
 file_exists(char *filename)
 {
@@ -957,7 +979,9 @@ file_exists(char *filename)
     return 0;
 }
 
-/* Print a nice fingerprint of a key */
+/**
+ * Print a nice fingerprint of a key.
+ */
 static void
 print_fingerprint(const u8 *key)
 {
@@ -991,6 +1015,9 @@ static const char command_names[][12] = {
     "keygen", "fingerprint", "archive", "extract"
 };
 
+/**
+ * Attempt to unambiguously parse the user's command into an enum.
+ */
 static enum command
 parse_command(char *command)
 {
@@ -1339,6 +1366,9 @@ command_extract(struct optparse *options)
         remove(infile);
 }
 
+/**
+ * Write a NULL-terminated array of strings with a newline after each.
+ */
 static void
 multiputs(const char **s, FILE *f)
 {
