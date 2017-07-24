@@ -167,7 +167,7 @@ joinstr(int n, ...)
 /**
  * Read the protection key from a key agent identified by its IV.
  */
-static int agent_read(const u8 *key, const u8 *id);
+static int agent_read(u8 *key, const u8 *id);
 
 /**
  * Serve the protection key on a key agent identified by its IV.
@@ -295,7 +295,7 @@ agent_run(const u8 *key, const u8 *iv)
 
 #else
 static int
-agent_read(const u8 *key, const u8 *id)
+agent_read(u8 *key, const u8 *id)
 {
     (void)key;
     (void)id;
