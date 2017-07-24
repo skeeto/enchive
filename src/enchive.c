@@ -333,9 +333,7 @@ dir_exists(const char *path)
     return !stat(path, &info) && S_ISDIR(info.st_mode);
 }
 
-/**
- * Use $XDG_CONFIG_HOME/enchive, or $HOME/.config/enchive.
- */
+/* Use $XDG_CONFIG_HOME/enchive, or $HOME/.config/enchive. */
 static char *
 storage_directory(char *file)
 {
