@@ -26,12 +26,12 @@ clean:
 install: enchive enchive.1
 	mkdir -p $(DESTDIR)$(PREFIX)/bin
 	mkdir -p $(DESTDIR)$(PREFIX)/share/man/man1
-	cp enchive $(DESTDIR)$(PREFIX)/bin
+	cp -f enchive $(DESTDIR)$(PREFIX)/bin
 	gzip < enchive.1 > $(DESTDIR)$(PREFIX)/share/man/man1/enchive.1.gz
 
 uninstall:
-	rm $(DESTDIR)$(PREFIX)/bin/enchive
-	rm $(DESTDIR)$(PREFIX)/share/man/man1/enchive.1.gz
+	rm -f $(DESTDIR)$(PREFIX)/bin/enchive
+	rm -f $(DESTDIR)$(PREFIX)/share/man/man1/enchive.1.gz
 
 .SUFFIXES: .c .o
 .c.o:
