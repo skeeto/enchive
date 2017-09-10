@@ -11,24 +11,12 @@
 #  define ENCHIVE_FORMAT_VERSION 3
 #endif
 
-#ifndef ENCHIVE_RANDOM_DEVICE
-#  define ENCHIVE_RANDOM_DEVICE /dev/urandom
-#endif
-
 #ifndef ENCHIVE_KEY_DERIVE_ITERATIONS
 #  define ENCHIVE_KEY_DERIVE_ITERATIONS 25  /* 32MB */
 #endif
 
 #ifndef ENCHIVE_SECKEY_DERIVE_ITERATIONS
 #  define ENCHIVE_SECKEY_DERIVE_ITERATIONS 29 /* 512MB */
-#endif
-
-#ifndef ENCHIVE_OPTION_RANDOM_DEVICE
-#  if defined(__unix__) || defined(__APPLE__)
-#    define ENCHIVE_OPTION_RANDOM_DEVICE 1
-#  else
-#    define ENCHIVE_OPTION_RANDOM_DEVICE 0
-#  endif
 #endif
 
 #ifndef ENCHIVE_OPTION_AGENT

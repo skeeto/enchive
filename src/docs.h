@@ -3,12 +3,7 @@ static const char *docs_usage[] = {
 #if ENCHIVE_OPTION_AGENT
 "              [-a|--agent[=seconds]] [-A|--no-agent]",
 #endif
-#if ENCHIVE_OPTION_RANDOM_DEVICE
-"              [-r|--random-device <file>] "
-#else
-"              "
-#endif
-"[--version] [--help]",
+"              [--version] [--help]",
 "              <command> [args]",
 "",
 "Commands (unique prefixes accepted):",
@@ -28,10 +23,6 @@ static const char *docs_usage[] = {
 #  else
     " (default)",
 #  endif
-#endif
-#if ENCHIVE_OPTION_RANDOM_DEVICE
-"  -r, --random-device <dev>  device for secure entropy ["
-    STR(ENCHIVE_RANDOM_DEVICE) "]",
 #endif
 "  --version                  display version information",
 "  --help                     display this usage information",

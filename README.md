@@ -243,21 +243,6 @@ The compile-time options below also apply to this amalgamation build.
 Various options and defaults can be configured at compile time using C
 defines (`-D...`).
 
-#### `ENCHIVE_RANDOM_DEVICE`
-
-For unix-like systems, this is the default source of entropy when
-creating keys and IVs. The default value is `/dev/urandom`. You could
-set this to `/dev/random`, though that's [pointless][djb] and [a waste
-of time][myths]. It can be changed at run time with `--random-device`.
-
-In the future, Enchive may first try `getrandom(2)` / `getentropy(2)`.
-
-#### `ENCHIVE_OPTION_RANDOM_DEVICE`
-
-Whether or not the `--random-device` option should be available. This
-option is 0 by default on Windows, where Enchive always uses a
-[Cryptographic Service Provider][csp].
-
 #### `ENCHIVE_OPTION_AGENT`
 
 Whether to expose the `--agent` and `--no-agent` option. This option

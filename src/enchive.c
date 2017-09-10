@@ -610,14 +610,12 @@ key_derive(const char *passphrase, u8 *buf, int iexp, const u8 *salt)
 static void secure_entropy(void *buf, size_t len);
 
 #if defined(__unix__) || defined(__APPLE__)
-static char *global_random_device = STR(ENCHIVE_RANDOM_DEVICE);
-
 static void
 secure_entropy(void *buf, size_t len)
 {
-    FILE *r = fopen(global_random_device, "rb");
+    FILE *r = fopen("/dev/urandom", "rb");
     if (!r)
-        fatal("failed to open %s", global_random_device);
+        fatal("failed to open %s", "/dev/urandom");
     if (!fread(buf, len, 1, r))
         fatal("failed to gather entropy");
     fclose(r);
@@ -1403,9 +1401,6 @@ main(int argc, char **argv)
         {"agent",         'a', OPTPARSE_OPTIONAL},
         {"no-agent",      'A', OPTPARSE_NONE},
 #endif
-#if ENCHIVE_OPTION_RANDOM_DEVICE
-        {"random-device", 'r', OPTPARSE_REQUIRED},
-#endif
         {"pubkey",        'p', OPTPARSE_REQUIRED},
         {"seckey",        's', OPTPARSE_REQUIRED},
         {"version",       'V', OPTPARSE_NONE},
@@ -1436,11 +1431,6 @@ main(int argc, char **argv)
                 break;
             case 'A':
                 global_agent_timeout = 0;
-                break;
-#endif
-#if ENCHIVE_OPTION_RANDOM_DEVICE
-            case 'r':
-                global_random_device = options->optarg;
                 break;
 #endif
             case 'p':

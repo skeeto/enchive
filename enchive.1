@@ -7,7 +7,6 @@ enchive \- personal archive encryption
 .HP 8
 .B enchive
 [\-\fBa\fR[\fIseconds\fR]|\fB\-A\fR]
-[\fB\-r\ \fIdevice\fR]
 [\fB\-p\ \fIpubkey\fR]
 [\fB\-s\ \fIseckey\fR]
 [\fB\-\-version\fR]
@@ -52,9 +51,6 @@ Do not start the key agent (default).
 \fB\-p, \-\-pubkey\fR \fIfile\fR
 Specifies the public key file to use for encryption.
 .TP
-\fB\-r\fR, \fB\-\-random\-device\fR \fIdevice\fR
-Use \fIdevice\fR as an entropy source instead of \fB/dev/urandom\fR.
-.TP
 \fB\-s, \-\-seckey\fR \fIfile\fR
 Specifies the secret key file to use for decryption.
 .TP
@@ -67,7 +63,7 @@ Print a synopsis of the command line interface.
 Any unique prefix for a command is accepted. For example, the command \fBa\fR would mean \fBarchive\fR.
 .TP
 \fBkeygen\fR [\fIOPTION\fR]...
-Generates a new keypair either from the random device or a passphrase.
+Generates a new keypair either from system entropy or a passphrase.
 .RS 4
 .TP
 \fB\-d\fR[\fIN\fR], \fB\-\-derive\fR[=\fIN\fR]
