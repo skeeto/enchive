@@ -1372,7 +1372,7 @@ multiputs(const char **s, FILE *f)
 {
     while (*s) {
         fputs(*s++, f);
-        putchar('\n');
+        fputc('\n', f);
     }
 }
 
