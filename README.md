@@ -156,6 +156,21 @@ verify its symmetric key before beginning decryption. Otherwise a
 wrong key would only be detected by the MAC after decryption has
 completed.
 
+> I'm getting the error "Value too large for defined data type."
+
+This is a flaw in the 32-bit version of glibc that prevents C programs
+from even opening files larger than 2GB. Compile with "large file
+support" enabled:
+
+    make CFLAGS='-O3 -D_FILE_OFFSET_BITS=64'
+
+Alternatively, use your shell to open files for Enchive:
+
+    $ enchive archive <largefile >largefile.enchive
+
+Note that Enchive will not be able to delete shell-opened files in case
+of errors (tampering, etc.).
+
 ## Encryption/decryption algorithm
 
 The process for encrypting a file:
