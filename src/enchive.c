@@ -324,7 +324,7 @@ static char *storage_directory(char *file);
 #include <sys/types.h>
 
 /**
- * Return non-zero if path exists and is a directory. 
+ * Return non-zero if path exists and is a directory.
  */
 static int
 dir_exists(const char *path)
