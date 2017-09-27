@@ -705,7 +705,7 @@ symmetric_encrypt(FILE *in, FILE *out, const u8 *key, const u8 *iv)
     if (!fwrite(mac, sizeof(mac), 1, out))
         fatal("error writing checksum to ciphertext file");
     if (fflush(out))
-        fatal("error flushing to ciphertext file");
+        fatal("error flushing to ciphertext file -- %s", strerror(errno));
 }
 
 /**
@@ -755,7 +755,7 @@ symmetric_decrypt(FILE *in, FILE *out, const u8 *key, const u8 *iv)
     if (memcmp(buffer[0], mac, sizeof(mac)) != 0)
         fatal("checksum mismatch!");
     if (fflush(out))
-        fatal("error flushing to plaintext file");
+        fatal("error flushing to plaintext file -- %s", strerror(errno));
 
 }
 
@@ -785,13 +785,14 @@ write_pubkey(char *file, u8 *key)
 {
     FILE *f = fopen(file, "wb");
     if (!f)
-        fatal("failed to open key file for writing -- %s", file);
+        fatal("failed to open key file for writing '%s' -- %s",
+              file, strerror(errno));
     cleanup_register(f, file);
     if (!fwrite(key, 32, 1, f))
-        fatal("failed to write key file -- %s", file);
+        fatal("failed to write key file '%s'", file);
     cleanup_closed(f);
     if (fclose(f))
-        fatal("failed to flush key file -- %s", file);
+        fatal("failed to flush key file '%s' -- %s", file, strerror(errno));
 }
 
 /* Layout of secret key file */
@@ -859,13 +860,13 @@ write_seckey(char *file, const u8 *seckey, int iexp)
 
     secfile = secure_creat(file);
     if (!secfile)
-        fatal("failed to open key file for writing -- %s", file);
+        fatal("failed to open key file for writing '%s'", file);
     cleanup_register(secfile, file);
     if (!fwrite(buf, sizeof(buf), 1, secfile))
-        fatal("failed to write key file -- %s", file);
+        fatal("failed to write key file '%s'", file);
     cleanup_closed(secfile);
     if (fclose(secfile))
-        fatal("failed to flush key file -- %s", file);
+        fatal("failed to flush key file '%s' -- %s", file, strerror(errno));
 }
 
 /**
@@ -876,9 +877,10 @@ load_pubkey(const char *file, u8 *key)
 {
     FILE *f = fopen(file, "rb");
     if (!f)
-        fatal("failed to open key file for reading -- %s", file);
+        fatal("failed to open key file for reading '%s' -- %s",
+              file, strerror(errno));
     if (!fread(key, 32, 1, f))
-        fatal("failed to read key file -- %s", file);
+        fatal("failed to read key file '%s'", file);
     fclose(f);
 }
 
@@ -913,7 +915,8 @@ load_seckey(const char *file, u8 *seckey)
     /* Read the entire file into buf. */
     secfile = fopen(file, "rb");
     if (!secfile)
-        fatal("failed to open key file for reading -- %s", file);
+        fatal("failed to open key file for reading '%s' -- %s",
+              file, strerror(errno));
     if (!fread(buf, sizeof(buf), 1, secfile))
         fatal("failed to read key file -- %s", file);
     fclose(secfile);
@@ -1230,7 +1233,8 @@ command_archive(struct optparse *options)
     if (infile) {
         in = fopen(infile, "rb");
         if (!in)
-            fatal("could not open input file -- %s", infile);
+            fatal("could not open input file '%s' -- %s",
+                  infile, strerror(errno));
     }
 
     outfile = dupstr(optparse_arg(options));
@@ -1241,7 +1245,8 @@ command_archive(struct optparse *options)
     if (outfile) {
         out = fopen(outfile, "wb");
         if (!out)
-            fatal("could not open output file -- %s", outfile);
+            fatal("could not open output file '%s' -- %s",
+                  outfile, strerror(errno));
         cleanup_register(out, outfile);
     }
 
@@ -1317,7 +1322,8 @@ command_extract(struct optparse *options)
     if (infile) {
         in = fopen(infile, "rb");
         if (!in)
-            fatal("could not open input file -- %s", infile);
+            fatal("could not open input file '%s' -- %s",
+                  infile, strerror(errno));
     }
 
     outfile = dupstr(optparse_arg(options));
@@ -1333,7 +1339,8 @@ command_extract(struct optparse *options)
     if (outfile) {
         out = fopen(outfile, "wb");
         if (!out)
-            fatal("could not open output file -- %s", infile);
+            fatal("could not open output file '%s' -- %s",
+                  infile, strerror(errno));
         cleanup_register(out, outfile);
     }
 
