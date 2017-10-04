@@ -6,11 +6,12 @@ PREFIX = /usr/local
 
 sources = src/enchive.c src/chacha.c src/curve25519-donna.c src/sha256.c
 objects = $(sources:.c=.o)
-headers = config.h src/docs.h src/chacha.h src/sha256.h src/optparse.h
+headers = config.h src/docs.h src/chacha.h src/sha256.h src/optparse.h \
+	  src/w32-compat.h
 
 enchive: $(objects)
 	$(CC) $(LDFLAGS) -o $@ $(objects) $(LDLIBS)
-src/enchive.o: src/enchive.c config.h src/docs.h
+src/enchive.o: src/enchive.c config.h src/docs.h src/w32-compat.h
 src/chacha.o: src/chacha.c config.h
 src/curve25519-donna.o: src/curve25519-donna.c config.h
 src/sha256.o: src/sha256.c config.h

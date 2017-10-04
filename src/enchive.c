@@ -5,6 +5,18 @@
 #include <stdarg.h>
 #include <errno.h>
 
+#ifdef _WIN32
+#include "w32-compat.h"
+#else
+#include <poll.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <termios.h>
+#include <sys/un.h>
+#include <sys/stat.h>
+#include <sys/socket.h>
+#endif
+
 #include "docs.h"
 #include "sha256.h"
 #include "chacha.h"
@@ -24,55 +36,9 @@ static int global_agent_timeout = 0;
 
 static const char enchive_suffix[] = ".enchive";
 
-static struct {
-    char *name;
-    FILE *file;
-} cleanup[2];
-
-/**
- * Register a file for deletion should fatal() be called.
- */
-static void
-cleanup_register(FILE *file, char *name)
-{
-    if (file) {
-        unsigned i;
-        for (i = 0; i < sizeof(cleanup) / sizeof(*cleanup); i++) {
-            if (!cleanup[i].name) {
-                cleanup[i].name = name;
-                cleanup[i].file = file;
-                return;
-            }
-        }
-    }
-    abort();
-}
-
-/**
- * Update cleanup registry to indicate FILE has been closed.
- */
-static void
-cleanup_closed(FILE *file)
-{
-    unsigned i;
-    for (i = 0; i < sizeof(cleanup) / sizeof(*cleanup); i++) {
-        if (file == cleanup[i].file)
-            cleanup[i].file = 0;
-        return;
-    }
-    abort();
-}
-
-/**
- * Free resources held by the cleanup registry.
- */
-static void
-cleanup_free(void)
-{
-    size_t i;
-    for (i = 0; i < sizeof(cleanup) / sizeof(*cleanup); i++)
-        free(cleanup[i].name);
-}
+static const char *cleanup_pubfile;
+static const char *cleanup_secfile;
+static const char *cleanup_outfile;
 
 /**
  * Print a message, cleanup, and exit the program with a failure code.
@@ -80,18 +46,17 @@ cleanup_free(void)
 static void
 fatal(const char *fmt, ...)
 {
-    unsigned i;
     va_list ap;
     va_start(ap, fmt);
     fprintf(stderr, "enchive: ");
     vfprintf(stderr, fmt, ap);
     fputc('\n', stderr);
-    for (i = 0; i < sizeof(cleanup) / sizeof(*cleanup); i++) {
-        if (cleanup[i].file)
-            fclose(cleanup[i].file);
-        if (cleanup[i].name)
-            remove(cleanup[i].name);
-    }
+    if (cleanup_pubfile)
+        remove(cleanup_pubfile);
+    if (cleanup_secfile)
+        remove(cleanup_secfile);
+    if (cleanup_outfile)
+        remove(cleanup_outfile);
     va_end(ap);
     exit(EXIT_FAILURE);
 }
@@ -164,6 +129,21 @@ joinstr(int n, ...)
     return str;
 }
 
+static ssize_t
+full_read(int fd, void *buf, size_t len)
+{
+    size_t z = 0;
+    while (z < len) {
+        ssize_t r = read(fd, (char *)buf + z, len - z);
+        if (r == -1)
+            return -1;
+        if (r == 0)
+            break;
+        z += r;
+    }
+    return z;
+}
+
 /**
  * Read the protection key from a key agent identified by its IV.
  */
@@ -175,11 +155,6 @@ static int agent_read(u8 *key, const u8 *id);
 static int agent_run(const u8 *key, const u8 *id);
 
 #if ENCHIVE_OPTION_AGENT
-#include <poll.h>
-#include <unistd.h>
-#include <sys/un.h>
-#include <sys/stat.h>
-#include <sys/socket.h>
 
 /**
  * Fill ADDR with a unix domain socket name for the agent.
@@ -299,6 +274,7 @@ agent_read(u8 *key, const u8 *id)
 {
     (void)key;
     (void)id;
+    (void)warning;
     return 0;
 }
 
@@ -408,117 +384,45 @@ storage_directory(char *file)
 /**
  * Read a passphrase directly from the keyboard without echo.
  */
-static void get_passphrase(char *buf, size_t len, char *prompt);
-
-/**
- * Read a passphrase without any fanfare (fallback).
- */
-static void
-get_passphrase_dumb(char *buf, size_t len, char *prompt)
-{
-    size_t passlen;
-    warning("reading passphrase from stdin with echo");
-    fputs(prompt, stderr);
-    fflush(stderr);
-    if (!fgets(buf, len, stdin))
-        fatal("could not read passphrase");
-    passlen = strlen(buf);
-    if (buf[passlen - 1] < ' ')
-        buf[passlen - 1] = 0;
-}
-
-#if defined(__unix__) || defined(__APPLE__)
-#include <fcntl.h>
-#include <unistd.h>
-#include <termios.h>
-
 static void
 get_passphrase(char *buf, size_t len, char *prompt)
 {
-    int tty = open("/dev/tty", O_RDWR);
-    if (tty == -1) {
-        get_passphrase_dumb(buf, len, prompt);
+    struct termios old, new;
+    ssize_t z;
+    int tty;
+
+    tty = open("/dev/tty", O_RDWR);
+    if (tty == -1)
+        fatal("could not open /dev/tty -- %s", strerror(errno));
+
+    if (write(tty, prompt, strlen(prompt)) != (ssize_t)strlen(prompt))
+        fatal("could not write to /dev/tty -- %s", strerror(errno));
+
+    if (tcgetattr(tty, &old) == -1)
+        fatal("tcgetattr() -- %s", strerror(errno));
+    new = old;
+    new.c_lflag &= ~ECHO;
+    if (tcsetattr(tty, TCSANOW, &new) == -1)
+        fatal("tcsetattr() -- %s", strerror(errno));
+
+    z = read(tty, buf, len);
+    (void)tcsetattr(tty, TCSANOW, &old);  /* don't care if this fails */
+    (void)write(tty, "\n", 1);            /* don't care if this fails */
+
+    if (z == -1) {
+        fatal("error readin /dev/tty -- %s", strerror(errno));
+    } else if (z == 0) {
+        buf[z] = 0;
     } else {
-        char newline = '\n';
-        size_t i = 0;
-        struct termios old, new;
-        if (write(tty, prompt, strlen(prompt)) == -1)
-            fatal("error asking for passphrase");
-        tcgetattr(tty, &old);
-        new = old;
-        new.c_lflag &= ~ECHO;
-        tcsetattr(tty, TCSANOW, &new);
-        errno = 0;
-        while (i < len - 1 && read(tty, buf + i, 1) == 1) {
-            if (buf[i] == '\n' || buf[i] == '\r')
-                break;
-            i++;
-        }
-        buf[i] = 0;
-        tcsetattr(tty, TCSANOW, &old);
-        if (write(tty, &newline, 1) == -1)
-            fatal("error asking for passphrase");
-        close(tty);
-        if (errno)
-            fatal("could not read passphrase from /dev/tty");
+        char *end;
+        buf[z] = 0;
+        if ((end = strchr(buf, '\r')))
+            *end = 0;
+        else if ((end = strchr(buf, '\n')))
+            *end = 0;
     }
+    close(tty);
 }
-
-#elif defined(_WIN32)
-#include <windows.h>
-
-static void
-get_passphrase(char *buf, size_t len, char *prompt)
-{
-    DWORD orig;
-    HANDLE in = GetStdHandle(STD_INPUT_HANDLE);
-    if (!GetConsoleMode(in, &orig)) {
-        get_passphrase_dumb(buf, len, prompt);
-    } else {
-        size_t passlen;
-        SetConsoleMode(in, orig & ~ENABLE_ECHO_INPUT);
-        fputs(prompt, stderr);
-        if (!fgets(buf, len, stdin))
-            fatal("could not read passphrase");
-        fputc('\n', stderr);
-        passlen = strlen(buf);
-        if (buf[passlen - 1] < ' ')
-            buf[passlen - 1] = 0;
-    }
-}
-
-#else
-static void
-get_passphrase(char *buf, size_t len, char *prompt)
-{
-    get_passphrase_dumb(buf, len, prompt);
-}
-#endif
-
-/**
- * Create/truncate a file with paranoid permissions using OS calls.
- */
-static FILE *secure_creat(const char *file);
-
-#if defined(__unix__) || defined(__APPLE__)
-#include <unistd.h>
-
-static FILE *
-secure_creat(const char *file)
-{
-    int fd = open(file, O_CREAT | O_WRONLY, 00600);
-    if (fd == -1)
-        return 0;
-    return fdopen(fd, "wb");
-}
-
-#else
-static FILE *
-secure_creat(const char *file)
-{
-    return fopen(file, "wb");
-}
-#endif
 
 /**
  * Initialize a SHA-256 context for HMAC-SHA256.
@@ -607,35 +511,16 @@ key_derive(const char *passphrase, u8 *buf, int iexp, const u8 *salt)
  * Get secure entropy suitable for key generation from OS.
  * Abort the program if the entropy could not be retrieved.
  */
-static void secure_entropy(void *buf, size_t len);
-
-#if defined(__unix__) || defined(__APPLE__)
 static void
 secure_entropy(void *buf, size_t len)
 {
-    FILE *r = fopen("/dev/urandom", "rb");
-    if (!r)
+    int fd = open("/dev/urandom", O_RDONLY);
+    if (fd == -1)
         fatal("failed to open %s", "/dev/urandom");
-    if (!fread(buf, len, 1, r))
+    if (read(fd, buf, len) != (ssize_t)len)
         fatal("failed to gather entropy");
-    fclose(r);
+    close(fd);
 }
-
-#elif defined(_WIN32)
-#include <windows.h>
-
-static void
-secure_entropy(void *buf, size_t len)
-{
-    HCRYPTPROV h = 0;
-    DWORD type = PROV_RSA_FULL;
-    DWORD flags = CRYPT_VERIFYCONTEXT | CRYPT_SILENT;
-    if (!CryptAcquireContext(&h, 0, 0, type, flags) ||
-        !CryptGenRandom(h, len, buf))
-        fatal("failed to gather entropy");
-    CryptReleaseContext(h, 0);
-}
-#endif
 
 /**
  * Generate a brand new Curve25519 secret key from system entropy.
@@ -672,7 +557,7 @@ compute_shared(u8 *sh, const u8 *s, const u8 *p)
  * Encrypt from file to file using key/iv, aborting on any error.
  */
 static void
-symmetric_encrypt(FILE *in, FILE *out, const u8 *key, const u8 *iv)
+symmetric_encrypt(int in, int out, const u8 *key, const u8 *iv)
 {
     static u8 buffer[2][CHACHA_BLOCKLENGTH * 1024];
     u8 mac[SHA256_BLOCK_SIZE];
@@ -684,34 +569,33 @@ symmetric_encrypt(FILE *in, FILE *out, const u8 *key, const u8 *iv)
     hmac_init(hmac, key);
 
     for (;;) {
-        size_t z = fread(buffer[0], 1, sizeof(buffer[0]), in);
-        if (!z) {
-            if (ferror(in))
-                fatal("error reading plaintext file");
+        ssize_t z = full_read(in, buffer[0], sizeof(buffer[0]));
+        if (z < 0)
+            fatal("error reading plaintext file -- %s", strerror(errno));
+        if (z == 0)
             break;
-        }
         sha256_update(hmac, buffer[0], z);
         chacha_encrypt_bytes(ctx, buffer[0], buffer[1], z);
-        if (!fwrite(buffer[1], z, 1, out))
-            fatal("error writing ciphertext file");
-        if (z < sizeof(buffer[0]))
+        if (write(out, buffer[1], z) != z)
+            fatal("error writing ciphertext file -- %s", strerror(errno));
+        if (z < (ssize_t)sizeof(buffer[0]))
             break;
     }
 
     hmac_final(hmac, key, mac);
 
-    if (!fwrite(mac, sizeof(mac), 1, out))
-        fatal("error writing checksum to ciphertext file");
-    if (fflush(out))
-        fatal("error flushing to ciphertext file -- %s", strerror(errno));
+    if (write(out, mac, sizeof(mac)) != sizeof(mac))
+        fatal("error writing checksum to ciphertext file -- %s",
+              strerror(errno));
 }
 
 /**
  * Decrypt from file to file using key/iv, aborting on any error.
  */
 static void
-symmetric_decrypt(FILE *in, FILE *out, const u8 *key, const u8 *iv)
+symmetric_decrypt(int in, int out, const u8 *key, const u8 *iv)
 {
+    ssize_t r;
     static u8 buffer[2][CHACHA_BLOCKLENGTH * 1024 + SHA256_BLOCK_SIZE];
     u8 mac[SHA256_BLOCK_SIZE];
     SHA256_CTX hmac[1];
@@ -722,39 +606,34 @@ symmetric_decrypt(FILE *in, FILE *out, const u8 *key, const u8 *iv)
     hmac_init(hmac, key);
 
     /* Always keep SHA256_BLOCK_SIZE bytes in the buffer. */
-    if (!(fread(buffer[0], SHA256_BLOCK_SIZE, 1, in))) {
-        if (ferror(in))
-            fatal("cannot read ciphertext file");
-        else
-            fatal("ciphertext file too short");
-    }
+    r = full_read(in, buffer[0], SHA256_BLOCK_SIZE);
+    if (r < 0)
+        fatal("cannot read ciphertext file -- %s", strerror(errno));
+    if (r != SHA256_BLOCK_SIZE)
+        fatal("ciphertext file too short");
 
     for (;;) {
         u8 *p = buffer[0] + SHA256_BLOCK_SIZE;
-        size_t z = fread(p, 1, sizeof(buffer[0]) - SHA256_BLOCK_SIZE, in);
-        if (!z) {
-            if (ferror(in))
-                fatal("error reading ciphertext file");
+        ssize_t z = full_read(in, p, sizeof(buffer[0]) - SHA256_BLOCK_SIZE);
+        if (z < 0)
+            fatal("error reading ciphertext file");
+        else if (z == 0)
             break;
-        }
         chacha_encrypt_bytes(ctx, buffer[0], buffer[1], z);
         sha256_update(hmac, buffer[1], z);
-        if (!fwrite(buffer[1], z, 1, out))
-            fatal("error writing plaintext file");
+        if (write(out, buffer[1], z) != z)
+            fatal("error writing plaintext file -- %s", strerror(errno));
 
         /* Move last SHA256_BLOCK_SIZE bytes to the front. */
         memmove(buffer[0], buffer[0] + z, SHA256_BLOCK_SIZE);
 
-        if (z < sizeof(buffer[0]) - SHA256_BLOCK_SIZE)
+        if (z < (ssize_t)sizeof(buffer[0]) - SHA256_BLOCK_SIZE)
             break;
     }
 
     hmac_final(hmac, key, mac);
     if (memcmp(buffer[0], mac, sizeof(mac)) != 0)
         fatal("checksum mismatch!");
-    if (fflush(out))
-        fatal("error flushing to plaintext file -- %s", strerror(errno));
-
 }
 
 /**
@@ -781,16 +660,14 @@ default_secfile(void)
 static void
 write_pubkey(char *file, u8 *key)
 {
-    FILE *f = fopen(file, "wb");
-    if (!f)
+    int fd = open(file, O_CREAT | O_WRONLY, 0600);
+    if (fd == -1)
         fatal("failed to open key file for writing '%s' -- %s",
               file, strerror(errno));
-    cleanup_register(f, file);
-    if (!fwrite(key, 32, 1, f))
+    cleanup_pubfile = file;
+    if (write(fd, key, 32) != 32)
         fatal("failed to write key file '%s'", file);
-    cleanup_closed(f);
-    if (fclose(f))
-        fatal("failed to flush key file '%s' -- %s", file, strerror(errno));
+    close(fd);
 }
 
 /* Layout of secret key file */
@@ -806,7 +683,7 @@ write_pubkey(char *file, u8 *key)
 static void
 write_seckey(char *file, const u8 *seckey, int iexp)
 {
-    FILE *secfile;
+    int secfd;
     chacha_ctx cha[1];
     SHA256_CTX sha[1];
     u8 buf[8 + 1 + 3 + 20 + 32] = {0}; /* entire file contents */
@@ -856,15 +733,13 @@ write_seckey(char *file, const u8 *seckey, int iexp)
         memcpy(buf_seckey, seckey, 32);
     }
 
-    secfile = secure_creat(file);
-    if (!secfile)
+    secfd = open(file, O_CREAT | O_WRONLY, 0600);
+    if (secfd == -1)
         fatal("failed to open key file for writing '%s'", file);
-    cleanup_register(secfile, file);
-    if (!fwrite(buf, sizeof(buf), 1, secfile))
+    cleanup_secfile = file;
+    if (write(secfd, buf, sizeof(buf)) != sizeof(buf))
         fatal("failed to write key file '%s'", file);
-    cleanup_closed(secfile);
-    if (fclose(secfile))
-        fatal("failed to flush key file '%s' -- %s", file, strerror(errno));
+    close(secfd);
 }
 
 /**
@@ -1198,8 +1073,8 @@ command_archive(struct optparse *options)
     /* Options */
     char *infile;
     char *outfile;
-    FILE *in = stdin;
-    FILE *out = stdout;
+    int in = STDIN_FILENO;
+    int out = STDOUT_FILENO;
     char *pubfile = dupstr(global_pubkey);
     int delete = 0;
 
@@ -1229,8 +1104,8 @@ command_archive(struct optparse *options)
 
     infile = optparse_arg(options);
     if (infile) {
-        in = fopen(infile, "rb");
-        if (!in)
+        in = open(infile, O_RDONLY);
+        if (in == -1)
             fatal("could not open input file '%s' -- %s",
                   infile, strerror(errno));
     }
@@ -1241,11 +1116,11 @@ command_archive(struct optparse *options)
         outfile = joinstr(2, infile, enchive_suffix);
     }
     if (outfile) {
-        out = fopen(outfile, "wb");
-        if (!out)
+        out = open(outfile, O_CREAT | O_WRONLY, 0600);
+        if (out == -1)
             fatal("could not open output file '%s' -- %s",
                   outfile, strerror(errno));
-        cleanup_register(out, outfile);
+        cleanup_outfile = outfile;
     }
 
     /* Generare ephemeral keypair. */
@@ -1258,22 +1133,16 @@ command_archive(struct optparse *options)
     sha256_update(sha, shared, sizeof(shared));
     sha256_final(sha, iv);
     iv[0] += (unsigned)ENCHIVE_FORMAT_VERSION;
-    if (!fwrite(iv, 8, 1, out))
+    if (write(out, iv, 8) != 8)
         fatal("failed to write IV to archive");
-    if (!fwrite(epublic, sizeof(epublic), 1, out))
+    if (write(out, epublic, sizeof(epublic)) != sizeof(epublic))
         fatal("failed to write ephemeral key to archive");
     symmetric_encrypt(in, out, shared, iv);
 
-    if (in != stdin)
-        fclose(in);
-    if (out != stdout) {
-        cleanup_closed(out);
-        fclose(out); /* already flushed */
-    }
-
+    close(in);
+    close(out);
     if (delete && infile)
         remove(infile);
-
 }
 
 static void
@@ -1287,8 +1156,8 @@ command_extract(struct optparse *options)
     /* Options */
     char *infile;
     char *outfile;
-    FILE *in = stdin;
-    FILE *out = stdout;
+    int in = STDIN_FILENO;
+    int out = STDOUT_FILENO;
     char *secfile = dupstr(global_seckey);
     int delete = 0;
 
@@ -1318,8 +1187,8 @@ command_extract(struct optparse *options)
 
     infile = optparse_arg(options);
     if (infile) {
-        in = fopen(infile, "rb");
-        if (!in)
+        in = open(infile, O_RDONLY);
+        if (in == -1)
             fatal("could not open input file '%s' -- %s",
                   infile, strerror(errno));
     }
@@ -1335,17 +1204,18 @@ command_extract(struct optparse *options)
         outfile[len - slen] = 0;
     }
     if (outfile) {
-        out = fopen(outfile, "wb");
-        if (!out)
+        out = open(outfile, O_CREAT | O_WRONLY, 0600);
+        if (out == -1)
             fatal("could not open output file '%s' -- %s",
                   infile, strerror(errno));
-        cleanup_register(out, outfile);
+        cleanup_outfile = outfile;
     }
 
-    if (!(fread(iv, sizeof(iv), 1, in)))
-        fatal("failed to read IV from archive");
-    if (!(fread(epublic, sizeof(epublic), 1, in)))
-        fatal("failed to read ephemeral key from archive");
+    if (full_read(in, iv, sizeof(iv)) != sizeof(iv))
+        fatal("failed to read IV from archive -- %s", strerror(errno));
+    if (full_read(in, epublic, sizeof(epublic)) != sizeof(epublic))
+        fatal("failed to read ephemeral key from archive -- %s",
+              strerror(errno));
     compute_shared(shared, secret, epublic);
 
     /* Validate key before processing the file. */
@@ -1358,13 +1228,8 @@ command_extract(struct optparse *options)
 
     symmetric_decrypt(in, out, shared, iv);
 
-    if (in != stdin)
-        fclose(in);
-    if (out != stdout) {
-        cleanup_closed(out);
-        fclose(out); /* already flushed */
-    }
-
+    close(in);
+    close(out);
     if (delete && infile)
         remove(infile);
 }
@@ -1481,6 +1346,5 @@ main(int argc, char **argv)
             break;
     }
 
-    cleanup_free();
     return 0;
 }
