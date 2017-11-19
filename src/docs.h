@@ -12,8 +12,8 @@ static const char *docs_usage[] = {
 "  extract       extract from an archive using the secret key",
 "  fingerprint   print the master keypair fingerprint",
 "",
-"  -p, --pubkey <file>        set the public key file [~/.enchive.pub]",
-"  -s, --seckey <file>        set the secret key file [~/.enchive.sec]",
+"  -p, --pubkey <file>        set the public key file",
+"  -s, --seckey <file>        set the secret key file",
 #if ENCHIVE_OPTION_AGENT
 "  -a, --agent[=seconds]      run key agent after reading a passphrase ["
      STR(ENCHIVE_AGENT_TIMEOUT) "]",
