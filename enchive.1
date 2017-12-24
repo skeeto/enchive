@@ -40,13 +40,17 @@ Like GnuPG, you can safely encrypt files on systems that you don't trust with yo
 Files are secured with ChaCha20, Curve25519, and HMAC-SHA256.
 .SH OPTIONS
 .TP
-\fB\-a\fR \fIseconds\fR, \fB\-\-agent\fR[=\fIseconds\fR]
+\fB\-a\fR\fIseconds\fR, \fB\-\-agent\fR[=\fIseconds\fR]
 Runs the key agent for awhile after successfully reading the passphrase.
 The agent will remain resident in memory until a period of inactivity passes.
 Default is 900 seconds (15 minutes).
 .TP
 \fB\-A\fB, \fB\-\-no\-agent\fR
 Do not start the key agent (default).
+.TP
+\fB\-e\fR\fIprogram\fR, \fB\-\-pinentry\fR[=\fIprogram\fR]
+Read passphrases using the system's pinentry program. By default
+Enchive uses the program named "pinentry".
 .TP
 \fB\-p, \-\-pubkey\fR \fIfile\fR
 Specifies the public key file to use for encryption.

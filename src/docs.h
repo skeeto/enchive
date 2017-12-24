@@ -24,6 +24,12 @@ static const char *docs_usage[] = {
     " (default)",
 #  endif
 #endif
+"  -e, --pinentry[=program]   use pinentry to read passphrases"
+#if ENCHIVE_PINENTRY_DEFAULT_ENABLED
+    " (default)",
+#else
+    "",
+#endif
 "  --version                  display version information",
 "  --help                     display this usage information",
 "",

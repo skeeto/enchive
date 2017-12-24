@@ -22,6 +22,12 @@ static int global_agent_timeout = ENCHIVE_AGENT_TIMEOUT;
 static int global_agent_timeout = 0;
 #endif
 
+#if ENCHIVE_PINENTRY_DEFAULT_ENABLED
+static char *pinentry_path = STR(ENCHIVE_PINENTRY_DEFAULT);
+#else
+static char *pinentry_path = 0;
+#endif
+
 static const char enchive_suffix[] = ".enchive";
 
 static struct {
@@ -433,9 +439,106 @@ get_passphrase_dumb(char *buf, size_t len, char *prompt)
 #include <termios.h>
 
 static void
+pinentry_decode(char *buf, size_t blen, const char *str)
+{
+    size_t i, j;
+
+    for (i = 0, j = 0; str[i] && str[i] != '\n' && j < blen - 1; i++) {
+        int c = str[i];
+        if (c == '%') {
+            static const char *hex = "0123456789ABCDEF";
+            char *nibh, *nibl;
+            if (!str[i + 1] || !str[i + 2])
+                fatal("invalid data from pinentry");
+            nibh = memchr(hex, str[i + 1], 16);
+            nibl = memchr(hex, str[i + 2], 16);
+            if (!nibh || !nibl)
+                fatal("invalid data from pinentry");
+            buf[j++] = (nibh - hex) * 16 + (nibl - hex);
+            i += 2;
+        } else {
+            buf[j++] = c;
+        }
+    }
+    buf[j] = 0;
+}
+
+static void
+invoke_pinentry(char *buf, size_t len, char *prompt)
+{
+    int pin[2];
+    int pout[2];
+    pid_t pid;
+
+    if (pipe(pin) != 0)
+        fatal("could not start pinentry -- %s", strerror(errno));
+    if (pipe(pout) != 0)
+        fatal("could not start pinentry -- %s", strerror(errno));
+
+    pid = fork();
+    if (pid == -1)
+        fatal("pinentry fork() failed -- %s", strerror(errno));
+    if (pid) {
+        FILE *pfi, *pfo;
+        char line[ENCHIVE_PASSPHRASE_MAX * 3 + 32];
+
+        close(pin[0]);
+        close(pout[1]);
+
+        if (!(pfi = fdopen(pin[1], "w")))
+            fatal("fdopen() input -- %s", strerror(errno));
+        if (!(pfo = fdopen(pout[0], "r")))
+            fatal("fdopen() output -- %s", strerror(errno));
+
+        if (!fgets(line, sizeof(line), pfo))
+            /* Likely caused by exec() failure, so exit quietly. */
+            exit(EXIT_FAILURE);
+        if (strncmp(line, "OK", 2) != 0)
+            fatal("pinentry startup failure");
+
+        if (fprintf(pfi, "SETPROMPT %s\n", prompt) < 0 || fflush(pfi) < 0)
+            fatal("pinentry write() -- %s", strerror(errno));
+
+        if (!fgets(line, sizeof(line), pfo))
+            fatal("pinentry read() -- %s", strerror(errno));
+        if (strncmp(line, "OK", 2) != 0)
+            fatal("pinentry protocol failure");
+
+        if (fprintf(pfi, "GETPIN\n") < 0 || fflush(pfi) < 0)
+            fatal("pinentry write() -- %s", strerror(errno));
+
+        if (!fgets(line, sizeof(line), pfo))
+            fatal("pinentry read() -- %s", strerror(errno));
+        if (strncmp(line, "ERR ", 4) == 0)
+            fatal("passphrase entry canceled");
+        else if (strncmp(line, "OK", 2) == 0)
+            buf[0] = 0;
+        else if (strncmp(line, "D ", 2) == 0)
+            pinentry_decode(buf, len, line + 2);
+        else
+            fatal("pinentry protocol failure");
+    } else {
+        close(pin[1]);
+        close(pout[0]);
+        dup2(pin[0], STDIN_FILENO);
+        dup2(pout[1], STDOUT_FILENO);
+        if (execlp(pinentry_path, pinentry_path, (char *)0))
+            fatal("exec(\"%s\") failed -- %s",
+                  pinentry_path, strerror(errno));
+    }
+}
+
+static void
 get_passphrase(char *buf, size_t len, char *prompt)
 {
-    int tty = open("/dev/tty", O_RDWR);
+    int tty;
+
+    if (pinentry_path) {
+        invoke_pinentry(buf, len, prompt);
+        return;
+    }
+
+    tty = open("/dev/tty", O_RDWR);
     if (tty == -1) {
         get_passphrase_dumb(buf, len, prompt);
     } else {
@@ -1401,6 +1504,7 @@ main(int argc, char **argv)
         {"agent",         'a', OPTPARSE_OPTIONAL},
         {"no-agent",      'A', OPTPARSE_NONE},
 #endif
+        {"pinentry",      'e', OPTPARSE_OPTIONAL},
         {"pubkey",        'p', OPTPARSE_REQUIRED},
         {"seckey",        's', OPTPARSE_REQUIRED},
         {"version",       'V', OPTPARSE_NONE},
@@ -1433,6 +1537,12 @@ main(int argc, char **argv)
                 global_agent_timeout = 0;
                 break;
 #endif
+            case 'e':
+                if (options->optarg)
+                    pinentry_path = options->optarg;
+                else
+                    pinentry_path = STR(ENCHIVE_PINENTRY_DEFAULT);
+                break;
             case 'p':
                 global_pubkey = options->optarg;
                 break;

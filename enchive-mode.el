@@ -4,12 +4,8 @@
 
 ;;; Commentary:
 
-;; Load this file, then M-x `enchive-mode' to enable automatic
-;; encryption and decryption of Enchive files.
-
-;; The agent *must* be started before any encrypted files are opened
-;; because this mode doesn't (yet) know how to prompt for a
-;; passphrase.
+;; Load this file, then M-x `enchive-mode' (global minor mode) to
+;; enable automatic encryption and decryption of Enchive files.
 
 ;;; Code:
 
@@ -28,7 +24,8 @@
   (let ((file-name-handler-alist ()))
     (cond ((eq operation 'insert-file-contents)
            (let ((file (car args)))
-             (unless (= 0 (call-process "enchive" file t "--agent" "extract"))
+             (unless (= 0 (call-process "enchive" file t nil
+                                        "--pinentry" "extract"))
                (error "Enchive subprocess failed"))
              (setf buffer-file-name file)
              (list file (buffer-size))))

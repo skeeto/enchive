@@ -258,6 +258,14 @@ time with an optional argument to `--agent`.
 Whether or not to enable the agent by default. This can be explicitly
 overridden at run time with `--agent` and `--no-agent`.
 
+#### `ENCHIVE_PINENTRY_DEFAULT`
+
+The default program to use for `pinentry`.
+
+#### `ENCHIVE_PINENTRY_DEFAULT_ENABLED`
+
+Whether or not to use `pinentry` by default when reading passphrases.
+
 #### `ENCHIVE_KEY_DERIVE_ITERATIONS`
 
 Power-of-two exponent for protection key derivation. Can be configured
