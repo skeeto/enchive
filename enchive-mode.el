@@ -24,7 +24,7 @@
   (let ((file-name-handler-alist ()))
     (cond ((eq operation 'insert-file-contents)
            (let ((file (car args)))
-             (unless (= 0 (call-process "enchive" file t nil
+             (unless (= 0 (call-process "enchive" file '(t nil) nil
                                         "--pinentry" "extract"))
                (error "Enchive subprocess failed"))
              (setf buffer-file-name file)
