@@ -25,7 +25,7 @@
     (cond ((eq operation 'insert-file-contents)
            (let ((file (car args)))
              (unless (= 0 (call-process "enchive" file '(t nil) nil
-                                        "--pinentry" "extract"))
+                                        "--pinentry" "--agent" "extract"))
                (error "Enchive subprocess failed"))
              (setf buffer-file-name file)
              (list file (buffer-size))))
