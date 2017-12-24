@@ -6,7 +6,8 @@ enchive \- personal archive encryption
 .nh
 .HP 8
 .B enchive
-[\-\fBa\fR[\fIseconds\fR]|\fB\-A\fR]
+[\-\fBa\fR|\fB\-A\fR]
+[\-\fBe\fR]
 [\fB\-p\ \fIpubkey\fR]
 [\fB\-s\ \fIseckey\fR]
 [\fB\-\-version\fR]
@@ -49,8 +50,8 @@ Default is 900 seconds (15 minutes).
 Do not start the key agent (default).
 .TP
 \fB\-e\fR\fIprogram\fR, \fB\-\-pinentry\fR[=\fIprogram\fR]
-Read passphrases using the system's pinentry program. By default
-Enchive uses the program named "pinentry".
+Read passphrases using the system's pinentry program.
+By default Enchive uses the program named "pinentry".
 .TP
 \fB\-p, \-\-pubkey\fR \fIfile\fR
 Specifies the public key file to use for encryption.
