@@ -517,6 +517,9 @@ invoke_pinentry(char *buf, size_t len, char *prompt)
             pinentry_decode(buf, len, line + 2);
         else
             fatal("pinentry protocol failure");
+
+        fclose(pfo);
+        fclose(pfi);
     } else {
         close(pin[1]);
         close(pout[0]);
