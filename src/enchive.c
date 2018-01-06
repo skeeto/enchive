@@ -28,7 +28,7 @@ static char *pinentry_path = STR(ENCHIVE_PINENTRY_DEFAULT);
 static char *pinentry_path = 0;
 #endif
 
-static const char enchive_suffix[] = ".enchive";
+static const char enchive_suffix[] = STR(ENCHIVE_FILE_EXTENSION);
 
 static struct {
     char *name;

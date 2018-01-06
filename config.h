@@ -11,6 +11,10 @@
 #  define ENCHIVE_FORMAT_VERSION 3
 #endif
 
+#ifndef ENCHIVE_FILE_EXTENSION
+#  define ENCHIVE_FILE_EXTENSION .enchive
+#endif
+
 #ifndef ENCHIVE_KEY_DERIVE_ITERATIONS
 #  define ENCHIVE_KEY_DERIVE_ITERATIONS 25  /* 32MB */
 #endif

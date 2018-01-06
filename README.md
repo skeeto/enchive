@@ -266,6 +266,11 @@ The default program to use for `pinentry`.
 
 Whether or not to use `pinentry` by default when reading passphrases.
 
+#### `ENCHIVE_FILE_EXTENSION`
+
+The file extension to add when archiving and remove when extracting. The
+default is `.enchive`, as it appears in the examples.
+
 #### `ENCHIVE_KEY_DERIVE_ITERATIONS`
 
 Power-of-two exponent for protection key derivation. Can be configured
