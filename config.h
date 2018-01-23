@@ -4,7 +4,7 @@
 /* Compile-time configuration */
 
 #ifndef ENCHIVE_VERSION
-#  define ENCHIVE_VERSION 3.3
+#  define ENCHIVE_VERSION 3.4
 #endif
 
 #ifndef ENCHIVE_FORMAT_VERSION
