@@ -1,5 +1,5 @@
 <!-- Creator     : groff version 1.22.3 -->
-<!-- CreationDate: Fri Jul 21 23:45:04 2017 -->
+<!-- CreationDate: Tue Jan 23 19:46:35 2018 -->
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
 "http://www.w3.org/TR/html4/loose.dtd">
 <html>
@@ -59,16 +59,15 @@ personal archive encryption</p>
 <td width="77%">
 
 
-
-<p style="margin-top: 1em">[-<b>a</b>[<i>seconds</i>]|<b>-A</b>]
-[<b>-r</b> <i>device</i>] [<b>-p</b> <i>pubkey</i>]
-[<b>-s</b> <i>seckey</i>]</p></td></tr>
+<p style="margin-top: 1em">[-<b>a</b>|<b>-A</b>]
+[-<b>e</b>] [<b>-p&nbsp;</b><i>pubkey</i>]
+[<b>-s&nbsp;</b><i>seckey</i>] [<b>--version</b>]
+[<b>--help</b>]</p> </td></tr>
 </table>
 
-<p style="margin-left:23%;">[<b>--version</b>]
-[<b>--help</b>] <b><br>
-keygen</b> [<b>-d</b>[<i>N</i>]] [<b>-e</b>] [<b>-f</b>]
-[<b>-i</b>] [<b>-k</b> <i>N</i>] [<b>-u</b>] <b><br>
+<p style="margin-left:23%;"><b>keygen</b>
+[<b>-d</b>[<i>N</i>]] [<b>-e</b>] [<b>-f</b>] [<b>-i</b>]
+[<b>-k&nbsp;</b><i>N</i>] [<b>-u</b>] <b><br>
 archive</b> [<b>-d</b>] <b><br>
 extract</b> [<b>-d</b>] <b><br>
 fingerprint</b></p>
@@ -93,8 +92,9 @@ secured with ChaCha20, Curve25519, and HMAC-SHA256.</p>
 </h2>
 
 
-<p style="margin-left:11%; margin-top: 1em"><b>-a</b>
-<i>seconds</i>, <b>--agent</b>[=<i>seconds</i>]</p>
+
+<p style="margin-left:11%; margin-top: 1em"><b>-a</b><i>seconds</i>,
+<b>--agent</b>[=<i>seconds</i>]</p>
 
 <p style="margin-left:22%;">Runs the key agent for awhile
 after successfully reading the passphrase. The agent will
@@ -106,17 +106,18 @@ passes. Default is 900 seconds (15 minutes).</p>
 <p style="margin-left:22%;">Do not start the key agent
 (default).</p>
 
+<p style="margin-left:11%;"><b>-e</b><i>program</i>,
+<b>--pinentry</b>[=<i>program</i>]</p>
+
+<p style="margin-left:22%;">Read passphrases using the
+system&rsquo;s pinentry program. By default Enchive uses the
+program named &quot;pinentry&quot;.</p>
+
 <p style="margin-left:11%;"><b>-p, --pubkey</b>
 <i>file</i></p>
 
 <p style="margin-left:22%;">Specifies the public key file
 to use for encryption.</p>
-
-<p style="margin-left:11%;"><b>-r</b>,
-<b>--random-device</b> <i>device</i></p>
-
-<p style="margin-left:22%;">Use <i>device</i> as an entropy
-source instead of <b>/dev/urandom</b>.</p>
 
 <p style="margin-left:11%;"><b>-s, --seckey</b>
 <i>file</i></p>
@@ -156,7 +157,7 @@ prefix for a command is accepted. For example, the command
 keygen</b> [<i>OPTION</i>]...</p>
 
 <p style="margin-left:22%;">Generates a new keypair either
-from the random device or a passphrase.</p>
+from system entropy or a passphrase.</p>
 
 <p style="margin-left:17%;"><b>-d</b>[<i>N</i>],
 <b>--derive</b>[=<i>N</i>]</p>
@@ -220,7 +221,7 @@ archival using the secret key. If no output filename is
 given, the output filename will be the input filename with
 the <b>.enchive</b> suffix removed. Without an output
 filename, it is an error for the input to lack this suffix.
-If no filenames are given, dencrypt standard input to
+If no filenames are given, decrypt standard input to
 standard output.</p>
 
 <p style="margin-left:17%;"><b>-d</b>, <b>--delete</b></p>
