@@ -31,7 +31,7 @@
              (list file (buffer-size))))
           ((eq operation 'write-region)
            (call-process-region (nth 0 args) (nth 1 args)
-                                "enchive" nil nil nil
+				enchive-program-name nil nil nil
                                 "archive" "/dev/stdin" (nth 2 args)))
           ((apply operation args)))))
 
