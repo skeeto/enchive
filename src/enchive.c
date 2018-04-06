@@ -930,15 +930,15 @@ write_seckey(char *file, const u8 *seckey, int iexp)
         /* Prompt for a passphrase. */
         char pass[2][ENCHIVE_PASSPHRASE_MAX];
         get_passphrase(pass[0], sizeof(pass[0]),
-                       "passphrase (empty for none): ");
+                       "protection passphrase (empty for none): ");
         if (!pass[0][0]) {
             /* Nevermind. */
             iexp = 0;
         }  else {
             get_passphrase(pass[1], sizeof(pass[0]),
-                           "passphrase (repeat): ");
+                           "protection passphrase (repeat): ");
             if (strcmp(pass[0], pass[1]) != 0)
-                fatal("passphrases don't match");
+                fatal("protection passphrases don't match");
 
             /* Generate an IV to double as salt. */
             secure_entropy(buf_iv, 8);
@@ -1244,7 +1244,7 @@ command_keygen(struct optparse *options)
         get_passphrase(pass[1], sizeof(pass[0]),
                        "secret key passphrase (repeat): ");
         if (strcmp(pass[0], pass[1]) != 0)
-            fatal("passphrases don't match");
+            fatal("secret key passphrases don't match");
         key_derive(pass[0], secret, seckey_derive_iterations, 0);
         secret[0] &= 248;
         secret[31] &= 127;
