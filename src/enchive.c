@@ -10,7 +10,7 @@
 #include "chacha.h"
 #include "optparse.h"
 
-int curve25519_donna(u8 *p, const u8 *s, const u8 *b);
+int curve25519_donna(uint8_t *p, const uint8_t *s, const uint8_t *b);
 
 /* Global options. */
 static char *global_pubkey = 0;
@@ -174,12 +174,12 @@ joinstr(int n, ...)
 /**
  * Read the protection key from a key agent identified by its IV.
  */
-static int agent_read(u8 *key, const u8 *id);
+static int agent_read(uint8_t *key, const uint8_t *id);
 
 /**
  * Serve the protection key on a key agent identified by its IV.
  */
-static int agent_run(const u8 *key, const u8 *id);
+static int agent_run(const uint8_t *key, const uint8_t *id);
 
 #if ENCHIVE_OPTION_AGENT
 #include <poll.h>
@@ -192,7 +192,7 @@ static int agent_run(const u8 *key, const u8 *id);
  * Fill ADDR with a unix domain socket name for the agent.
  */
 static int
-agent_addr(struct sockaddr_un *addr, const u8 *iv)
+agent_addr(struct sockaddr_un *addr, const uint8_t *iv)
 {
     char *dir = getenv("XDG_RUNTIME_DIR");
     if (!dir) {
@@ -213,7 +213,7 @@ agent_addr(struct sockaddr_un *addr, const u8 *iv)
 }
 
 static int
-agent_read(u8 *key, const u8 *iv)
+agent_read(uint8_t *key, const uint8_t *iv)
 {
     int success;
     struct sockaddr_un addr;
@@ -232,7 +232,7 @@ agent_read(u8 *key, const u8 *iv)
 }
 
 static int
-agent_run(const u8 *key, const u8 *iv)
+agent_run(const uint8_t *key, const uint8_t *iv)
 {
     struct pollfd pfd = {-1, POLLIN, 0};
     struct sockaddr_un addr;
@@ -302,7 +302,7 @@ agent_run(const u8 *key, const u8 *iv)
 
 #else
 static int
-agent_read(u8 *key, const u8 *id)
+agent_read(uint8_t *key, const uint8_t *id)
 {
     (void)key;
     (void)id;
@@ -310,7 +310,7 @@ agent_read(u8 *key, const u8 *id)
 }
 
 static int
-agent_run(const u8 *key, const u8 *id)
+agent_run(const uint8_t *key, const uint8_t *id)
 {
     (void)key;
     (void)id;
@@ -632,10 +632,10 @@ secure_creat(const char *file)
  * All message data will go into the resulting context.
  */
 static void
-hmac_init(SHA256_CTX *ctx, const u8 *key)
+hmac_init(SHA256_CTX *ctx, const uint8_t *key)
 {
     int i;
-    u8 pad[SHA256_BLOCK_SIZE];
+    uint8_t pad[SHA256_BLOCK_SIZE];
     sha256_init(ctx);
     for (i = 0; i < SHA256_BLOCK_SIZE; i++)
         pad[i] = key[i] ^ 0x36U;
@@ -647,10 +647,10 @@ hmac_init(SHA256_CTX *ctx, const u8 *key)
  * The key must be the same as used for initialization.
  */
 static void
-hmac_final(SHA256_CTX *ctx, const u8 *key, u8 *hash)
+hmac_final(SHA256_CTX *ctx, const uint8_t *key, uint8_t *hash)
 {
     int i;
-    u8 pad[SHA256_BLOCK_SIZE];
+    uint8_t pad[SHA256_BLOCK_SIZE];
     sha256_final(ctx, hash);
     sha256_init(ctx);
     for (i = 0; i < SHA256_BLOCK_SIZE; i++)
@@ -665,15 +665,15 @@ hmac_final(SHA256_CTX *ctx, const u8 *key, u8 *hash)
  * Optionally provide an 8-byte salt.
  */
 static void
-key_derive(const char *passphrase, u8 *buf, int iexp, const u8 *salt)
+key_derive(const char *passphrase, uint8_t *buf, int iexp, const uint8_t *salt)
 {
-    u8 salt32[SHA256_BLOCK_SIZE] = {0};
+    uint8_t salt32[SHA256_BLOCK_SIZE] = {0};
     SHA256_CTX ctx[1];
     unsigned long i;
     unsigned long memlen = 1UL << iexp;
     unsigned long mask = memlen - 1;
     unsigned long iterations = 1UL << (iexp - 5);
-    u8 *memory, *memptr, *p;
+    uint8_t *memory, *memptr, *p;
 
     memory = malloc(memlen + SHA256_BLOCK_SIZE);
     if (!memory)
@@ -682,7 +682,7 @@ key_derive(const char *passphrase, u8 *buf, int iexp, const u8 *salt)
     if (salt)
         memcpy(salt32, salt, 8);
     hmac_init(ctx, salt32);
-    sha256_update(ctx, (u8 *)passphrase, strlen(passphrase));
+    sha256_update(ctx, (uint8_t *)passphrase, strlen(passphrase));
     hmac_final(ctx, salt32, memory);
 
     for (p = memory + SHA256_BLOCK_SIZE;
@@ -748,7 +748,7 @@ secure_entropy(void *buf, size_t len)
  * Generate a brand new Curve25519 secret key from system entropy.
  */
 static void
-generate_secret(u8 *s)
+generate_secret(uint8_t *s)
 {
     secure_entropy(s, 32);
     s[0] &= 248;
@@ -760,9 +760,9 @@ generate_secret(u8 *s)
  * Generate a Curve25519 public key from a secret key.
  */
 static void
-compute_public(u8 *p, const u8 *s)
+compute_public(uint8_t *p, const uint8_t *s)
 {
-    static const u8 b[32] = {9};
+    static const uint8_t b[32] = {9};
     curve25519_donna(p, s, b);
 }
 
@@ -770,7 +770,7 @@ compute_public(u8 *p, const u8 *s)
  * Compute a shared secret from our secret key and their public key.
  */
 static void
-compute_shared(u8 *sh, const u8 *s, const u8 *p)
+compute_shared(uint8_t *sh, const uint8_t *s, const uint8_t *p)
 {
     curve25519_donna(sh, s, p);
 }
@@ -779,10 +779,10 @@ compute_shared(u8 *sh, const u8 *s, const u8 *p)
  * Encrypt from file to file using key/iv, aborting on any error.
  */
 static void
-symmetric_encrypt(FILE *in, FILE *out, const u8 *key, const u8 *iv)
+symmetric_encrypt(FILE *in, FILE *out, const uint8_t *key, const uint8_t *iv)
 {
-    static u8 buffer[2][CHACHA_BLOCKLENGTH * 1024];
-    u8 mac[SHA256_BLOCK_SIZE];
+    static uint8_t buffer[2][CHACHA_BLOCKLENGTH * 1024];
+    uint8_t mac[SHA256_BLOCK_SIZE];
     SHA256_CTX hmac[1];
     chacha_ctx ctx[1];
 
@@ -798,7 +798,7 @@ symmetric_encrypt(FILE *in, FILE *out, const u8 *key, const u8 *iv)
             break;
         }
         sha256_update(hmac, buffer[0], z);
-        chacha_encrypt_bytes(ctx, buffer[0], buffer[1], z);
+        chacha_encrypt(ctx, buffer[0], buffer[1], z);
         if (!fwrite(buffer[1], z, 1, out))
             fatal("error writing ciphertext file");
         if (z < sizeof(buffer[0]))
@@ -817,10 +817,10 @@ symmetric_encrypt(FILE *in, FILE *out, const u8 *key, const u8 *iv)
  * Decrypt from file to file using key/iv, aborting on any error.
  */
 static void
-symmetric_decrypt(FILE *in, FILE *out, const u8 *key, const u8 *iv)
+symmetric_decrypt(FILE *in, FILE *out, const uint8_t *key, const uint8_t *iv)
 {
-    static u8 buffer[2][CHACHA_BLOCKLENGTH * 1024 + SHA256_BLOCK_SIZE];
-    u8 mac[SHA256_BLOCK_SIZE];
+    static uint8_t buffer[2][CHACHA_BLOCKLENGTH * 1024 + SHA256_BLOCK_SIZE];
+    uint8_t mac[SHA256_BLOCK_SIZE];
     SHA256_CTX hmac[1];
     chacha_ctx ctx[1];
 
@@ -837,14 +837,14 @@ symmetric_decrypt(FILE *in, FILE *out, const u8 *key, const u8 *iv)
     }
 
     for (;;) {
-        u8 *p = buffer[0] + SHA256_BLOCK_SIZE;
+        uint8_t *p = buffer[0] + SHA256_BLOCK_SIZE;
         size_t z = fread(p, 1, sizeof(buffer[0]) - SHA256_BLOCK_SIZE, in);
         if (!z) {
             if (ferror(in))
                 fatal("error reading ciphertext file");
             break;
         }
-        chacha_encrypt_bytes(ctx, buffer[0], buffer[1], z);
+        chacha_encrypt(ctx, buffer[0], buffer[1], z);
         sha256_update(hmac, buffer[1], z);
         if (!fwrite(buffer[1], z, 1, out))
             fatal("error writing plaintext file");
@@ -886,7 +886,7 @@ default_secfile(void)
  * Dump the public key to a file, aborting on error.
  */
 static void
-write_pubkey(char *file, u8 *key)
+write_pubkey(char *file, uint8_t *key)
 {
     FILE *f = fopen(file, "wb");
     if (!f)
@@ -911,19 +911,19 @@ write_pubkey(char *file, u8 *key)
  * Write the secret key to a file, encrypting it if necessary.
  */
 static void
-write_seckey(char *file, const u8 *seckey, int iexp)
+write_seckey(char *file, const uint8_t *seckey, int iexp)
 {
     FILE *secfile;
     chacha_ctx cha[1];
     SHA256_CTX sha[1];
-    u8 buf[8 + 1 + 3 + 20 + 32] = {0}; /* entire file contents */
-    u8 protect[32];
+    uint8_t buf[8 + 1 + 3 + 20 + 32] = {0}; /* entire file contents */
+    uint8_t protect[32];
 
-    u8 *buf_iv           = buf + SECFILE_IV;
-    u8 *buf_iterations   = buf + SECFILE_ITERATIONS;
-    u8 *buf_version      = buf + SECFILE_VERSION;
-    u8 *buf_protect_hash = buf + SECFILE_PROTECT_HASH;
-    u8 *buf_seckey       = buf + SECFILE_SECKEY;
+    uint8_t *buf_iv           = buf + SECFILE_IV;
+    uint8_t *buf_iterations   = buf + SECFILE_ITERATIONS;
+    uint8_t *buf_version      = buf + SECFILE_VERSION;
+    uint8_t *buf_protect_hash = buf + SECFILE_PROTECT_HASH;
+    uint8_t *buf_seckey       = buf + SECFILE_SECKEY;
 
     buf_version[0] = ENCHIVE_FORMAT_VERSION;
 
@@ -957,7 +957,7 @@ write_seckey(char *file, const u8 *seckey, int iexp)
         /* Encrypt using key derived from passphrase. */
         chacha_keysetup(cha, protect, 256);
         chacha_ivsetup(cha, buf_iv);
-        chacha_encrypt_bytes(cha, seckey, buf_seckey, 32);
+        chacha_encrypt(cha, seckey, buf_seckey, 32);
     } else {
         /* Copy key to output buffer. */
         memcpy(buf_seckey, seckey, 32);
@@ -978,7 +978,7 @@ write_seckey(char *file, const u8 *seckey, int iexp)
  * Load the public key from the file.
  */
 static void
-load_pubkey(const char *file, u8 *key)
+load_pubkey(const char *file, uint8_t *key)
 {
     FILE *f = fopen(file, "rb");
     if (!f)
@@ -1000,22 +1000,22 @@ load_pubkey(const char *file, u8 *key)
  * necessary.
  */
 static void
-load_seckey(const char *file, u8 *seckey)
+load_seckey(const char *file, uint8_t *seckey)
 {
     FILE *secfile;
     chacha_ctx cha[1];
     SHA256_CTX sha[1];
-    u8 buf[8 + 4 + 20 + 32];            /* entire key file contents */
-    u8 protect[32];                     /* protection key */
-    u8 protect_hash[SHA256_BLOCK_SIZE]; /* hash of protection key */
+    uint8_t buf[8 + 4 + 20 + 32];            /* entire key file contents */
+    uint8_t protect[32];                     /* protection key */
+    uint8_t protect_hash[SHA256_BLOCK_SIZE]; /* hash of protection key */
     int iexp;
     int version;
 
-    u8 *buf_iv           = buf + SECFILE_IV;
-    u8 *buf_iterations   = buf + SECFILE_ITERATIONS;
-    u8 *buf_version      = buf + SECFILE_VERSION;
-    u8 *buf_protect_hash = buf + SECFILE_PROTECT_HASH;
-    u8 *buf_seckey       = buf + SECFILE_SECKEY;
+    uint8_t *buf_iv           = buf + SECFILE_IV;
+    uint8_t *buf_iterations   = buf + SECFILE_ITERATIONS;
+    uint8_t *buf_version      = buf + SECFILE_VERSION;
+    uint8_t *buf_protect_hash = buf + SECFILE_PROTECT_HASH;
+    uint8_t *buf_seckey       = buf + SECFILE_SECKEY;
 
     /* Read the entire file into buf. */
     secfile = fopen(file, "rb");
@@ -1064,7 +1064,7 @@ load_seckey(const char *file, u8 *seckey)
         /* Decrypt the key into the output. */
         chacha_keysetup(cha, protect, 256);
         chacha_ivsetup(cha, buf_iv);
-        chacha_encrypt_bytes(cha, buf_seckey, seckey, 32);
+        chacha_encrypt(cha, buf_seckey, seckey, 32);
     } else {
         /* Key is unencrypted, copy into output. */
         memcpy(seckey, buf_seckey, 32);
@@ -1089,10 +1089,10 @@ file_exists(char *filename)
  * Print a nice fingerprint of a key.
  */
 static void
-print_fingerprint(const u8 *key)
+print_fingerprint(const uint8_t *key)
 {
     int i;
-    u8 hash[32];
+    uint8_t hash[32];
     SHA256_CTX sha[1];
 
     sha256_init(sha);
@@ -1157,8 +1157,8 @@ command_keygen(struct optparse *options)
     char *secfile = dupstr(global_seckey);
     int pubfile_exists;
     int secfile_exists;
-    u8 public[32];
-    u8 secret[32];
+    uint8_t public[32];
+    uint8_t secret[32];
     int clobber = 0;
     int derive = 0;
     int edit = 0;
@@ -1275,7 +1275,7 @@ command_fingerprint(struct optparse *options)
     };
 
     char *pubfile = dupstr(global_pubkey);
-    u8 public[32];
+    uint8_t public[32];
 
     int option;
     while ((option = optparse_long(options, fingerprint, 0)) != -1) {
@@ -1311,11 +1311,11 @@ command_archive(struct optparse *options)
     int delete = 0;
 
     /* Workspace */
-    u8 public[32];
-    u8 esecret[32];
-    u8 epublic[32];
-    u8 shared[32];
-    u8 iv[SHA256_BLOCK_SIZE];
+    uint8_t public[32];
+    uint8_t esecret[32];
+    uint8_t epublic[32];
+    uint8_t shared[32];
+    uint8_t iv[SHA256_BLOCK_SIZE];
     SHA256_CTX sha[1];
 
     int option;
@@ -1401,11 +1401,11 @@ command_extract(struct optparse *options)
 
     /* Workspace */
     SHA256_CTX sha[1];
-    u8 secret[32];
-    u8 epublic[32];
-    u8 shared[32];
-    u8 iv[8];
-    u8 check_iv[SHA256_BLOCK_SIZE];
+    uint8_t secret[32];
+    uint8_t epublic[32];
+    uint8_t shared[32];
+    uint8_t iv[8];
+    uint8_t check_iv[SHA256_BLOCK_SIZE];
 
     int option;
     while ((option = optparse_long(options, extract, 0)) != -1) {

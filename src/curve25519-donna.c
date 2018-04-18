@@ -57,7 +57,9 @@
  * i.e. the limbs are 26, 25, 26, 25, ... bits wide. */
 
 /* Sum two numbers: output += in */
-static void fsum(limb *output, const limb *in) {
+static void
+fsum(int64_t *output, const int64_t *in)
+{
   unsigned i;
   for (i = 0; i < 10; i += 2) {
     output[0+i] = output[0+i] + in[0+i];
@@ -67,7 +69,9 @@ static void fsum(limb *output, const limb *in) {
 
 /* Find the difference of two numbers: output = in - output
  * (note the order of the arguments!). */
-static void fdifference(limb *output, const limb *in) {
+static void
+fdifference(int64_t *output, const int64_t *in)
+{
   unsigned i;
   for (i = 0; i < 10; ++i) {
     output[i] = in[i] - output[i];
@@ -75,7 +79,9 @@ static void fdifference(limb *output, const limb *in) {
 }
 
 /* Multiply a number by a scalar: output = in * scalar */
-static void fscalar_product(limb *output, const limb *in, const limb scalar) {
+static void
+fscalar_product(int64_t *output, const int64_t *in, const int64_t scalar)
+{
   unsigned i;
   for (i = 0; i < 10; ++i) {
     output[i] = in[i] * scalar;
@@ -88,114 +94,118 @@ static void fscalar_product(limb *output, const limb *in, const limb scalar) {
  * form, the output is not.
  *
  * output[x] <= 14 * the largest product of the input limbs. */
-static void fproduct(limb *output, const limb *in2, const limb *in) {
-  output[0] =       ((limb) ((s32) in2[0])) * ((s32) in[0]);
-  output[1] =       ((limb) ((s32) in2[0])) * ((s32) in[1]) +
-                    ((limb) ((s32) in2[1])) * ((s32) in[0]);
-  output[2] =  2 *  ((limb) ((s32) in2[1])) * ((s32) in[1]) +
-                    ((limb) ((s32) in2[0])) * ((s32) in[2]) +
-                    ((limb) ((s32) in2[2])) * ((s32) in[0]);
-  output[3] =       ((limb) ((s32) in2[1])) * ((s32) in[2]) +
-                    ((limb) ((s32) in2[2])) * ((s32) in[1]) +
-                    ((limb) ((s32) in2[0])) * ((s32) in[3]) +
-                    ((limb) ((s32) in2[3])) * ((s32) in[0]);
-  output[4] =       ((limb) ((s32) in2[2])) * ((s32) in[2]) +
-               2 * (((limb) ((s32) in2[1])) * ((s32) in[3]) +
-                    ((limb) ((s32) in2[3])) * ((s32) in[1])) +
-                    ((limb) ((s32) in2[0])) * ((s32) in[4]) +
-                    ((limb) ((s32) in2[4])) * ((s32) in[0]);
-  output[5] =       ((limb) ((s32) in2[2])) * ((s32) in[3]) +
-                    ((limb) ((s32) in2[3])) * ((s32) in[2]) +
-                    ((limb) ((s32) in2[1])) * ((s32) in[4]) +
-                    ((limb) ((s32) in2[4])) * ((s32) in[1]) +
-                    ((limb) ((s32) in2[0])) * ((s32) in[5]) +
-                    ((limb) ((s32) in2[5])) * ((s32) in[0]);
-  output[6] =  2 * (((limb) ((s32) in2[3])) * ((s32) in[3]) +
-                    ((limb) ((s32) in2[1])) * ((s32) in[5]) +
-                    ((limb) ((s32) in2[5])) * ((s32) in[1])) +
-                    ((limb) ((s32) in2[2])) * ((s32) in[4]) +
-                    ((limb) ((s32) in2[4])) * ((s32) in[2]) +
-                    ((limb) ((s32) in2[0])) * ((s32) in[6]) +
-                    ((limb) ((s32) in2[6])) * ((s32) in[0]);
-  output[7] =       ((limb) ((s32) in2[3])) * ((s32) in[4]) +
-                    ((limb) ((s32) in2[4])) * ((s32) in[3]) +
-                    ((limb) ((s32) in2[2])) * ((s32) in[5]) +
-                    ((limb) ((s32) in2[5])) * ((s32) in[2]) +
-                    ((limb) ((s32) in2[1])) * ((s32) in[6]) +
-                    ((limb) ((s32) in2[6])) * ((s32) in[1]) +
-                    ((limb) ((s32) in2[0])) * ((s32) in[7]) +
-                    ((limb) ((s32) in2[7])) * ((s32) in[0]);
-  output[8] =       ((limb) ((s32) in2[4])) * ((s32) in[4]) +
-               2 * (((limb) ((s32) in2[3])) * ((s32) in[5]) +
-                    ((limb) ((s32) in2[5])) * ((s32) in[3]) +
-                    ((limb) ((s32) in2[1])) * ((s32) in[7]) +
-                    ((limb) ((s32) in2[7])) * ((s32) in[1])) +
-                    ((limb) ((s32) in2[2])) * ((s32) in[6]) +
-                    ((limb) ((s32) in2[6])) * ((s32) in[2]) +
-                    ((limb) ((s32) in2[0])) * ((s32) in[8]) +
-                    ((limb) ((s32) in2[8])) * ((s32) in[0]);
-  output[9] =       ((limb) ((s32) in2[4])) * ((s32) in[5]) +
-                    ((limb) ((s32) in2[5])) * ((s32) in[4]) +
-                    ((limb) ((s32) in2[3])) * ((s32) in[6]) +
-                    ((limb) ((s32) in2[6])) * ((s32) in[3]) +
-                    ((limb) ((s32) in2[2])) * ((s32) in[7]) +
-                    ((limb) ((s32) in2[7])) * ((s32) in[2]) +
-                    ((limb) ((s32) in2[1])) * ((s32) in[8]) +
-                    ((limb) ((s32) in2[8])) * ((s32) in[1]) +
-                    ((limb) ((s32) in2[0])) * ((s32) in[9]) +
-                    ((limb) ((s32) in2[9])) * ((s32) in[0]);
-  output[10] = 2 * (((limb) ((s32) in2[5])) * ((s32) in[5]) +
-                    ((limb) ((s32) in2[3])) * ((s32) in[7]) +
-                    ((limb) ((s32) in2[7])) * ((s32) in[3]) +
-                    ((limb) ((s32) in2[1])) * ((s32) in[9]) +
-                    ((limb) ((s32) in2[9])) * ((s32) in[1])) +
-                    ((limb) ((s32) in2[4])) * ((s32) in[6]) +
-                    ((limb) ((s32) in2[6])) * ((s32) in[4]) +
-                    ((limb) ((s32) in2[2])) * ((s32) in[8]) +
-                    ((limb) ((s32) in2[8])) * ((s32) in[2]);
-  output[11] =      ((limb) ((s32) in2[5])) * ((s32) in[6]) +
-                    ((limb) ((s32) in2[6])) * ((s32) in[5]) +
-                    ((limb) ((s32) in2[4])) * ((s32) in[7]) +
-                    ((limb) ((s32) in2[7])) * ((s32) in[4]) +
-                    ((limb) ((s32) in2[3])) * ((s32) in[8]) +
-                    ((limb) ((s32) in2[8])) * ((s32) in[3]) +
-                    ((limb) ((s32) in2[2])) * ((s32) in[9]) +
-                    ((limb) ((s32) in2[9])) * ((s32) in[2]);
-  output[12] =      ((limb) ((s32) in2[6])) * ((s32) in[6]) +
-               2 * (((limb) ((s32) in2[5])) * ((s32) in[7]) +
-                    ((limb) ((s32) in2[7])) * ((s32) in[5]) +
-                    ((limb) ((s32) in2[3])) * ((s32) in[9]) +
-                    ((limb) ((s32) in2[9])) * ((s32) in[3])) +
-                    ((limb) ((s32) in2[4])) * ((s32) in[8]) +
-                    ((limb) ((s32) in2[8])) * ((s32) in[4]);
-  output[13] =      ((limb) ((s32) in2[6])) * ((s32) in[7]) +
-                    ((limb) ((s32) in2[7])) * ((s32) in[6]) +
-                    ((limb) ((s32) in2[5])) * ((s32) in[8]) +
-                    ((limb) ((s32) in2[8])) * ((s32) in[5]) +
-                    ((limb) ((s32) in2[4])) * ((s32) in[9]) +
-                    ((limb) ((s32) in2[9])) * ((s32) in[4]);
-  output[14] = 2 * (((limb) ((s32) in2[7])) * ((s32) in[7]) +
-                    ((limb) ((s32) in2[5])) * ((s32) in[9]) +
-                    ((limb) ((s32) in2[9])) * ((s32) in[5])) +
-                    ((limb) ((s32) in2[6])) * ((s32) in[8]) +
-                    ((limb) ((s32) in2[8])) * ((s32) in[6]);
-  output[15] =      ((limb) ((s32) in2[7])) * ((s32) in[8]) +
-                    ((limb) ((s32) in2[8])) * ((s32) in[7]) +
-                    ((limb) ((s32) in2[6])) * ((s32) in[9]) +
-                    ((limb) ((s32) in2[9])) * ((s32) in[6]);
-  output[16] =      ((limb) ((s32) in2[8])) * ((s32) in[8]) +
-               2 * (((limb) ((s32) in2[7])) * ((s32) in[9]) +
-                    ((limb) ((s32) in2[9])) * ((s32) in[7]));
-  output[17] =      ((limb) ((s32) in2[8])) * ((s32) in[9]) +
-                    ((limb) ((s32) in2[9])) * ((s32) in[8]);
-  output[18] = 2 *  ((limb) ((s32) in2[9])) * ((s32) in[9]);
+static void
+fproduct(int64_t *output, const int64_t *in2, const int64_t *in)
+{
+  output[0] =       ((int64_t) ((int32_t) in2[0])) * ((int32_t) in[0]);
+  output[1] =       ((int64_t) ((int32_t) in2[0])) * ((int32_t) in[1]) +
+                    ((int64_t) ((int32_t) in2[1])) * ((int32_t) in[0]);
+  output[2] =  2 *  ((int64_t) ((int32_t) in2[1])) * ((int32_t) in[1]) +
+                    ((int64_t) ((int32_t) in2[0])) * ((int32_t) in[2]) +
+                    ((int64_t) ((int32_t) in2[2])) * ((int32_t) in[0]);
+  output[3] =       ((int64_t) ((int32_t) in2[1])) * ((int32_t) in[2]) +
+                    ((int64_t) ((int32_t) in2[2])) * ((int32_t) in[1]) +
+                    ((int64_t) ((int32_t) in2[0])) * ((int32_t) in[3]) +
+                    ((int64_t) ((int32_t) in2[3])) * ((int32_t) in[0]);
+  output[4] =       ((int64_t) ((int32_t) in2[2])) * ((int32_t) in[2]) +
+               2 * (((int64_t) ((int32_t) in2[1])) * ((int32_t) in[3]) +
+                    ((int64_t) ((int32_t) in2[3])) * ((int32_t) in[1])) +
+                    ((int64_t) ((int32_t) in2[0])) * ((int32_t) in[4]) +
+                    ((int64_t) ((int32_t) in2[4])) * ((int32_t) in[0]);
+  output[5] =       ((int64_t) ((int32_t) in2[2])) * ((int32_t) in[3]) +
+                    ((int64_t) ((int32_t) in2[3])) * ((int32_t) in[2]) +
+                    ((int64_t) ((int32_t) in2[1])) * ((int32_t) in[4]) +
+                    ((int64_t) ((int32_t) in2[4])) * ((int32_t) in[1]) +
+                    ((int64_t) ((int32_t) in2[0])) * ((int32_t) in[5]) +
+                    ((int64_t) ((int32_t) in2[5])) * ((int32_t) in[0]);
+  output[6] =  2 * (((int64_t) ((int32_t) in2[3])) * ((int32_t) in[3]) +
+                    ((int64_t) ((int32_t) in2[1])) * ((int32_t) in[5]) +
+                    ((int64_t) ((int32_t) in2[5])) * ((int32_t) in[1])) +
+                    ((int64_t) ((int32_t) in2[2])) * ((int32_t) in[4]) +
+                    ((int64_t) ((int32_t) in2[4])) * ((int32_t) in[2]) +
+                    ((int64_t) ((int32_t) in2[0])) * ((int32_t) in[6]) +
+                    ((int64_t) ((int32_t) in2[6])) * ((int32_t) in[0]);
+  output[7] =       ((int64_t) ((int32_t) in2[3])) * ((int32_t) in[4]) +
+                    ((int64_t) ((int32_t) in2[4])) * ((int32_t) in[3]) +
+                    ((int64_t) ((int32_t) in2[2])) * ((int32_t) in[5]) +
+                    ((int64_t) ((int32_t) in2[5])) * ((int32_t) in[2]) +
+                    ((int64_t) ((int32_t) in2[1])) * ((int32_t) in[6]) +
+                    ((int64_t) ((int32_t) in2[6])) * ((int32_t) in[1]) +
+                    ((int64_t) ((int32_t) in2[0])) * ((int32_t) in[7]) +
+                    ((int64_t) ((int32_t) in2[7])) * ((int32_t) in[0]);
+  output[8] =       ((int64_t) ((int32_t) in2[4])) * ((int32_t) in[4]) +
+               2 * (((int64_t) ((int32_t) in2[3])) * ((int32_t) in[5]) +
+                    ((int64_t) ((int32_t) in2[5])) * ((int32_t) in[3]) +
+                    ((int64_t) ((int32_t) in2[1])) * ((int32_t) in[7]) +
+                    ((int64_t) ((int32_t) in2[7])) * ((int32_t) in[1])) +
+                    ((int64_t) ((int32_t) in2[2])) * ((int32_t) in[6]) +
+                    ((int64_t) ((int32_t) in2[6])) * ((int32_t) in[2]) +
+                    ((int64_t) ((int32_t) in2[0])) * ((int32_t) in[8]) +
+                    ((int64_t) ((int32_t) in2[8])) * ((int32_t) in[0]);
+  output[9] =       ((int64_t) ((int32_t) in2[4])) * ((int32_t) in[5]) +
+                    ((int64_t) ((int32_t) in2[5])) * ((int32_t) in[4]) +
+                    ((int64_t) ((int32_t) in2[3])) * ((int32_t) in[6]) +
+                    ((int64_t) ((int32_t) in2[6])) * ((int32_t) in[3]) +
+                    ((int64_t) ((int32_t) in2[2])) * ((int32_t) in[7]) +
+                    ((int64_t) ((int32_t) in2[7])) * ((int32_t) in[2]) +
+                    ((int64_t) ((int32_t) in2[1])) * ((int32_t) in[8]) +
+                    ((int64_t) ((int32_t) in2[8])) * ((int32_t) in[1]) +
+                    ((int64_t) ((int32_t) in2[0])) * ((int32_t) in[9]) +
+                    ((int64_t) ((int32_t) in2[9])) * ((int32_t) in[0]);
+  output[10] = 2 * (((int64_t) ((int32_t) in2[5])) * ((int32_t) in[5]) +
+                    ((int64_t) ((int32_t) in2[3])) * ((int32_t) in[7]) +
+                    ((int64_t) ((int32_t) in2[7])) * ((int32_t) in[3]) +
+                    ((int64_t) ((int32_t) in2[1])) * ((int32_t) in[9]) +
+                    ((int64_t) ((int32_t) in2[9])) * ((int32_t) in[1])) +
+                    ((int64_t) ((int32_t) in2[4])) * ((int32_t) in[6]) +
+                    ((int64_t) ((int32_t) in2[6])) * ((int32_t) in[4]) +
+                    ((int64_t) ((int32_t) in2[2])) * ((int32_t) in[8]) +
+                    ((int64_t) ((int32_t) in2[8])) * ((int32_t) in[2]);
+  output[11] =      ((int64_t) ((int32_t) in2[5])) * ((int32_t) in[6]) +
+                    ((int64_t) ((int32_t) in2[6])) * ((int32_t) in[5]) +
+                    ((int64_t) ((int32_t) in2[4])) * ((int32_t) in[7]) +
+                    ((int64_t) ((int32_t) in2[7])) * ((int32_t) in[4]) +
+                    ((int64_t) ((int32_t) in2[3])) * ((int32_t) in[8]) +
+                    ((int64_t) ((int32_t) in2[8])) * ((int32_t) in[3]) +
+                    ((int64_t) ((int32_t) in2[2])) * ((int32_t) in[9]) +
+                    ((int64_t) ((int32_t) in2[9])) * ((int32_t) in[2]);
+  output[12] =      ((int64_t) ((int32_t) in2[6])) * ((int32_t) in[6]) +
+               2 * (((int64_t) ((int32_t) in2[5])) * ((int32_t) in[7]) +
+                    ((int64_t) ((int32_t) in2[7])) * ((int32_t) in[5]) +
+                    ((int64_t) ((int32_t) in2[3])) * ((int32_t) in[9]) +
+                    ((int64_t) ((int32_t) in2[9])) * ((int32_t) in[3])) +
+                    ((int64_t) ((int32_t) in2[4])) * ((int32_t) in[8]) +
+                    ((int64_t) ((int32_t) in2[8])) * ((int32_t) in[4]);
+  output[13] =      ((int64_t) ((int32_t) in2[6])) * ((int32_t) in[7]) +
+                    ((int64_t) ((int32_t) in2[7])) * ((int32_t) in[6]) +
+                    ((int64_t) ((int32_t) in2[5])) * ((int32_t) in[8]) +
+                    ((int64_t) ((int32_t) in2[8])) * ((int32_t) in[5]) +
+                    ((int64_t) ((int32_t) in2[4])) * ((int32_t) in[9]) +
+                    ((int64_t) ((int32_t) in2[9])) * ((int32_t) in[4]);
+  output[14] = 2 * (((int64_t) ((int32_t) in2[7])) * ((int32_t) in[7]) +
+                    ((int64_t) ((int32_t) in2[5])) * ((int32_t) in[9]) +
+                    ((int64_t) ((int32_t) in2[9])) * ((int32_t) in[5])) +
+                    ((int64_t) ((int32_t) in2[6])) * ((int32_t) in[8]) +
+                    ((int64_t) ((int32_t) in2[8])) * ((int32_t) in[6]);
+  output[15] =      ((int64_t) ((int32_t) in2[7])) * ((int32_t) in[8]) +
+                    ((int64_t) ((int32_t) in2[8])) * ((int32_t) in[7]) +
+                    ((int64_t) ((int32_t) in2[6])) * ((int32_t) in[9]) +
+                    ((int64_t) ((int32_t) in2[9])) * ((int32_t) in[6]);
+  output[16] =      ((int64_t) ((int32_t) in2[8])) * ((int32_t) in[8]) +
+               2 * (((int64_t) ((int32_t) in2[7])) * ((int32_t) in[9]) +
+                    ((int64_t) ((int32_t) in2[9])) * ((int32_t) in[7]));
+  output[17] =      ((int64_t) ((int32_t) in2[8])) * ((int32_t) in[9]) +
+                    ((int64_t) ((int32_t) in2[9])) * ((int32_t) in[8]);
+  output[18] = 2 *  ((int64_t) ((int32_t) in2[9])) * ((int32_t) in[9]);
 }
 
 /* Reduce a long form to a short form by taking the input mod 2^255 - 19.
  *
  * On entry: |output[i]| < 14*2^54
  * On exit: |output[0..8]| < 280*2^54 */
-static void freduce_degree(limb *output) {
+static void
+freduce_degree(int64_t *output)
+{
   /* Each of these shifts and adds ends up multiplying the value by 19.
    *
    * For output[0..8], the absolute entry value is < 14*2^54 and we add, at
@@ -236,8 +246,8 @@ static void freduce_degree(limb *output) {
 /* return v / 2^26, using only shifts and adds.
  *
  * On entry: v can take any value. */
-static limb
-div_by_2_26(const limb v)
+static int64_t
+div_by_2_26(const int64_t v)
 {
   /* High word of v; no shift needed. */
   const uint32_t highword = (uint32_t) (((uint64_t) v) >> 32);
@@ -252,8 +262,8 @@ div_by_2_26(const limb v)
 /* return v / (2^25), using only shifts and adds.
  *
  * On entry: v can take any value. */
-static limb
-div_by_2_25(const limb v)
+static int64_t
+div_by_2_25(const int64_t v)
 {
   /* High word of v; no shift needed*/
   const uint32_t highword = (uint32_t) (((uint64_t) v) >> 32);
@@ -268,13 +278,15 @@ div_by_2_25(const limb v)
 /* Reduce all coefficients of the short form input so that |x| < 2^26.
  *
  * On entry: |output[i]| < 280*2^54 */
-static void freduce_coefficients(limb *output) {
+static void
+freduce_coefficients(int64_t *output)
+{
   unsigned i;
 
   output[10] = 0;
 
   for (i = 0; i < 10; i += 2) {
-    limb over = div_by_2_26(output[i]);
+    int64_t over = div_by_2_26(output[i]);
     /* The entry condition (that |output[i]| < 280*2^54) means that over is, at
      * most, 280*2^28 in the first iteration of this loop. This is added to the
      * next limb and we can approximate the resulting bound of that limb by
@@ -302,7 +314,7 @@ static void freduce_coefficients(limb *output) {
   /* Now output[1..9] are reduced, and |output[0]| < 2^26 + 19*281*2^29
    * So |over| will be no more than 2^16. */
   {
-    limb over = div_by_2_26(output[0]);
+    int64_t over = div_by_2_26(output[0]);
     output[0] -= over << 26;
     output[1] += over;
   }
@@ -318,14 +330,15 @@ static void freduce_coefficients(limb *output) {
  * output must be distinct to both inputs. The output is reduced degree
  * (indeed, one need only provide storage for 10 limbs) and |output[i]| < 2^26. */
 static void
-fmul(limb *output, const limb *in, const limb *in2) {
-  limb t[19];
+fmul(int64_t *output, const int64_t *in, const int64_t *in2)
+{
+  int64_t t[19];
   fproduct(t, in, in2);
   /* |t[i]| < 14*2^54 */
   freduce_degree(t);
   freduce_coefficients(t);
   /* |t[i]| < 2^26 */
-  memcpy(output, t, sizeof(limb) * 10);
+  memcpy(output, t, sizeof(int64_t) * 10);
 }
 
 /* Square a number: output = in**2
@@ -334,62 +347,64 @@ fmul(limb *output, const limb *in, const limb *in2) {
  * form, the output is not.
  *
  * output[x] <= 14 * the largest product of the input limbs. */
-static void fsquare_inner(limb *output, const limb *in) {
-  output[0] =       ((limb) ((s32) in[0])) * ((s32) in[0]);
-  output[1] =  2 *  ((limb) ((s32) in[0])) * ((s32) in[1]);
-  output[2] =  2 * (((limb) ((s32) in[1])) * ((s32) in[1]) +
-                    ((limb) ((s32) in[0])) * ((s32) in[2]));
-  output[3] =  2 * (((limb) ((s32) in[1])) * ((s32) in[2]) +
-                    ((limb) ((s32) in[0])) * ((s32) in[3]));
-  output[4] =       ((limb) ((s32) in[2])) * ((s32) in[2]) +
-               4 *  ((limb) ((s32) in[1])) * ((s32) in[3]) +
-               2 *  ((limb) ((s32) in[0])) * ((s32) in[4]);
-  output[5] =  2 * (((limb) ((s32) in[2])) * ((s32) in[3]) +
-                    ((limb) ((s32) in[1])) * ((s32) in[4]) +
-                    ((limb) ((s32) in[0])) * ((s32) in[5]));
-  output[6] =  2 * (((limb) ((s32) in[3])) * ((s32) in[3]) +
-                    ((limb) ((s32) in[2])) * ((s32) in[4]) +
-                    ((limb) ((s32) in[0])) * ((s32) in[6]) +
-               2 *  ((limb) ((s32) in[1])) * ((s32) in[5]));
-  output[7] =  2 * (((limb) ((s32) in[3])) * ((s32) in[4]) +
-                    ((limb) ((s32) in[2])) * ((s32) in[5]) +
-                    ((limb) ((s32) in[1])) * ((s32) in[6]) +
-                    ((limb) ((s32) in[0])) * ((s32) in[7]));
-  output[8] =       ((limb) ((s32) in[4])) * ((s32) in[4]) +
-               2 * (((limb) ((s32) in[2])) * ((s32) in[6]) +
-                    ((limb) ((s32) in[0])) * ((s32) in[8]) +
-               2 * (((limb) ((s32) in[1])) * ((s32) in[7]) +
-                    ((limb) ((s32) in[3])) * ((s32) in[5])));
-  output[9] =  2 * (((limb) ((s32) in[4])) * ((s32) in[5]) +
-                    ((limb) ((s32) in[3])) * ((s32) in[6]) +
-                    ((limb) ((s32) in[2])) * ((s32) in[7]) +
-                    ((limb) ((s32) in[1])) * ((s32) in[8]) +
-                    ((limb) ((s32) in[0])) * ((s32) in[9]));
-  output[10] = 2 * (((limb) ((s32) in[5])) * ((s32) in[5]) +
-                    ((limb) ((s32) in[4])) * ((s32) in[6]) +
-                    ((limb) ((s32) in[2])) * ((s32) in[8]) +
-               2 * (((limb) ((s32) in[3])) * ((s32) in[7]) +
-                    ((limb) ((s32) in[1])) * ((s32) in[9])));
-  output[11] = 2 * (((limb) ((s32) in[5])) * ((s32) in[6]) +
-                    ((limb) ((s32) in[4])) * ((s32) in[7]) +
-                    ((limb) ((s32) in[3])) * ((s32) in[8]) +
-                    ((limb) ((s32) in[2])) * ((s32) in[9]));
-  output[12] =      ((limb) ((s32) in[6])) * ((s32) in[6]) +
-               2 * (((limb) ((s32) in[4])) * ((s32) in[8]) +
-               2 * (((limb) ((s32) in[5])) * ((s32) in[7]) +
-                    ((limb) ((s32) in[3])) * ((s32) in[9])));
-  output[13] = 2 * (((limb) ((s32) in[6])) * ((s32) in[7]) +
-                    ((limb) ((s32) in[5])) * ((s32) in[8]) +
-                    ((limb) ((s32) in[4])) * ((s32) in[9]));
-  output[14] = 2 * (((limb) ((s32) in[7])) * ((s32) in[7]) +
-                    ((limb) ((s32) in[6])) * ((s32) in[8]) +
-               2 *  ((limb) ((s32) in[5])) * ((s32) in[9]));
-  output[15] = 2 * (((limb) ((s32) in[7])) * ((s32) in[8]) +
-                    ((limb) ((s32) in[6])) * ((s32) in[9]));
-  output[16] =      ((limb) ((s32) in[8])) * ((s32) in[8]) +
-               4 *  ((limb) ((s32) in[7])) * ((s32) in[9]);
-  output[17] = 2 *  ((limb) ((s32) in[8])) * ((s32) in[9]);
-  output[18] = 2 *  ((limb) ((s32) in[9])) * ((s32) in[9]);
+static void
+fsquare_inner(int64_t *output, const int64_t *in)
+{
+  output[0] =       ((int64_t) ((int32_t) in[0])) * ((int32_t) in[0]);
+  output[1] =  2 *  ((int64_t) ((int32_t) in[0])) * ((int32_t) in[1]);
+  output[2] =  2 * (((int64_t) ((int32_t) in[1])) * ((int32_t) in[1]) +
+                    ((int64_t) ((int32_t) in[0])) * ((int32_t) in[2]));
+  output[3] =  2 * (((int64_t) ((int32_t) in[1])) * ((int32_t) in[2]) +
+                    ((int64_t) ((int32_t) in[0])) * ((int32_t) in[3]));
+  output[4] =       ((int64_t) ((int32_t) in[2])) * ((int32_t) in[2]) +
+               4 *  ((int64_t) ((int32_t) in[1])) * ((int32_t) in[3]) +
+               2 *  ((int64_t) ((int32_t) in[0])) * ((int32_t) in[4]);
+  output[5] =  2 * (((int64_t) ((int32_t) in[2])) * ((int32_t) in[3]) +
+                    ((int64_t) ((int32_t) in[1])) * ((int32_t) in[4]) +
+                    ((int64_t) ((int32_t) in[0])) * ((int32_t) in[5]));
+  output[6] =  2 * (((int64_t) ((int32_t) in[3])) * ((int32_t) in[3]) +
+                    ((int64_t) ((int32_t) in[2])) * ((int32_t) in[4]) +
+                    ((int64_t) ((int32_t) in[0])) * ((int32_t) in[6]) +
+               2 *  ((int64_t) ((int32_t) in[1])) * ((int32_t) in[5]));
+  output[7] =  2 * (((int64_t) ((int32_t) in[3])) * ((int32_t) in[4]) +
+                    ((int64_t) ((int32_t) in[2])) * ((int32_t) in[5]) +
+                    ((int64_t) ((int32_t) in[1])) * ((int32_t) in[6]) +
+                    ((int64_t) ((int32_t) in[0])) * ((int32_t) in[7]));
+  output[8] =       ((int64_t) ((int32_t) in[4])) * ((int32_t) in[4]) +
+               2 * (((int64_t) ((int32_t) in[2])) * ((int32_t) in[6]) +
+                    ((int64_t) ((int32_t) in[0])) * ((int32_t) in[8]) +
+               2 * (((int64_t) ((int32_t) in[1])) * ((int32_t) in[7]) +
+                    ((int64_t) ((int32_t) in[3])) * ((int32_t) in[5])));
+  output[9] =  2 * (((int64_t) ((int32_t) in[4])) * ((int32_t) in[5]) +
+                    ((int64_t) ((int32_t) in[3])) * ((int32_t) in[6]) +
+                    ((int64_t) ((int32_t) in[2])) * ((int32_t) in[7]) +
+                    ((int64_t) ((int32_t) in[1])) * ((int32_t) in[8]) +
+                    ((int64_t) ((int32_t) in[0])) * ((int32_t) in[9]));
+  output[10] = 2 * (((int64_t) ((int32_t) in[5])) * ((int32_t) in[5]) +
+                    ((int64_t) ((int32_t) in[4])) * ((int32_t) in[6]) +
+                    ((int64_t) ((int32_t) in[2])) * ((int32_t) in[8]) +
+               2 * (((int64_t) ((int32_t) in[3])) * ((int32_t) in[7]) +
+                    ((int64_t) ((int32_t) in[1])) * ((int32_t) in[9])));
+  output[11] = 2 * (((int64_t) ((int32_t) in[5])) * ((int32_t) in[6]) +
+                    ((int64_t) ((int32_t) in[4])) * ((int32_t) in[7]) +
+                    ((int64_t) ((int32_t) in[3])) * ((int32_t) in[8]) +
+                    ((int64_t) ((int32_t) in[2])) * ((int32_t) in[9]));
+  output[12] =      ((int64_t) ((int32_t) in[6])) * ((int32_t) in[6]) +
+               2 * (((int64_t) ((int32_t) in[4])) * ((int32_t) in[8]) +
+               2 * (((int64_t) ((int32_t) in[5])) * ((int32_t) in[7]) +
+                    ((int64_t) ((int32_t) in[3])) * ((int32_t) in[9])));
+  output[13] = 2 * (((int64_t) ((int32_t) in[6])) * ((int32_t) in[7]) +
+                    ((int64_t) ((int32_t) in[5])) * ((int32_t) in[8]) +
+                    ((int64_t) ((int32_t) in[4])) * ((int32_t) in[9]));
+  output[14] = 2 * (((int64_t) ((int32_t) in[7])) * ((int32_t) in[7]) +
+                    ((int64_t) ((int32_t) in[6])) * ((int32_t) in[8]) +
+               2 *  ((int64_t) ((int32_t) in[5])) * ((int32_t) in[9]));
+  output[15] = 2 * (((int64_t) ((int32_t) in[7])) * ((int32_t) in[8]) +
+                    ((int64_t) ((int32_t) in[6])) * ((int32_t) in[9]));
+  output[16] =      ((int64_t) ((int32_t) in[8])) * ((int32_t) in[8]) +
+               4 *  ((int64_t) ((int32_t) in[7])) * ((int32_t) in[9]);
+  output[17] = 2 *  ((int64_t) ((int32_t) in[8])) * ((int32_t) in[9]);
+  output[18] = 2 *  ((int64_t) ((int32_t) in[9])) * ((int32_t) in[9]);
 }
 
 /* fsquare sets output = in^2.
@@ -400,8 +415,9 @@ static void fsquare_inner(limb *output, const limb *in) {
  * On exit: The |output| argument is in reduced coefficients form (indeed, one
  * need only provide storage for 10 limbs) and |out[i]| < 2^26. */
 static void
-fsquare(limb *output, const limb *in) {
-  limb t[19];
+fsquare(int64_t *output, const int64_t *in)
+{
+  int64_t t[19];
   fsquare_inner(t, in);
   /* |t[i]| < 14*2^54 because the largest product of two limbs will be <
    * 2^(27+27) and fsquare_inner adds together, at most, 14 of those
@@ -409,17 +425,18 @@ fsquare(limb *output, const limb *in) {
   freduce_degree(t);
   freduce_coefficients(t);
   /* |t[i]| < 2^26 */
-  memcpy(output, t, sizeof(limb) * 10);
+  memcpy(output, t, sizeof(int64_t) * 10);
 }
 
 /* Take a little-endian, 32-byte number and expand it into polynomial form */
 static void
-fexpand(limb *output, const u8 *input) {
+fexpand(int64_t *output, const uint8_t *input)
+{
 #define F(n,start,shift,mask) \
-  output[n] = ((((limb) input[start + 0]) | \
-                ((limb) input[start + 1]) << 8 | \
-                ((limb) input[start + 2]) << 16 | \
-                ((limb) input[start + 3]) << 24) >> shift) & mask;
+  output[n] = ((((int64_t) input[start + 0]) | \
+                ((int64_t) input[start + 1]) << 8 | \
+                ((int64_t) input[start + 2]) << 16 | \
+                ((int64_t) input[start + 3]) << 24) >> shift) & mask;
   F(0, 0, 0, 0x3ffffff);
   F(1, 3, 2, 0x1ffffff);
   F(2, 6, 3, 0x3ffffff);
@@ -438,7 +455,9 @@ fexpand(limb *output, const u8 *input) {
 #endif
 
 /* s32_eq returns 0xffffffff iff a == b and zero otherwise. */
-static s32 s32_eq(s32 a, s32 b) {
+static int32_t
+s32_eq(int32_t a, int32_t b)
+{
   a = ~(a ^ b);
   a &= a << 16;
   a &= a << 8;
@@ -450,7 +469,9 @@ static s32 s32_eq(s32 a, s32 b) {
 
 /* s32_gte returns 0xffffffff if a >= b and zero otherwise, where a and b are
  * both non-negative. */
-static s32 s32_gte(s32 a, s32 b) {
+static int32_t
+s32_gte(int32_t a, int32_t b)
+{
   a -= b;
   /* a >= 0 iff a >= b. */
   return ~(a >> 31);
@@ -461,13 +482,14 @@ static s32 s32_gte(s32 a, s32 b) {
  *
  * On entry: |input_limbs[i]| < 2^26 */
 static void
-fcontract(u8 *output, limb *input_limbs) {
+fcontract(uint8_t *output, int64_t *input_limbs)
+{
   int i;
   int j;
-  s32 input[10];
-  s32 mask;
+  int32_t input[10];
+  int32_t mask;
 
-  /* |input_limbs[i]| < 2^26, so it's valid to convert to an s32. */
+  /* |input_limbs[i]| < 2^26, so it's valid to convert to an int32_t. */
   for (i = 0; i < 10; i++) {
     input[i] = input_limbs[i];
   }
@@ -477,13 +499,13 @@ fcontract(u8 *output, limb *input_limbs) {
       if ((i & 1) == 1) {
         /* This calculation is a time-invariant way to make input[i]
          * non-negative by borrowing from the next-larger limb. */
-        const s32 mask = input[i] >> 31;
-        const s32 carry = -((input[i] & mask) >> 25);
+        const int32_t mask = input[i] >> 31;
+        const int32_t carry = -((input[i] & mask) >> 25);
         input[i] = input[i] + (carry << 25);
         input[i+1] = input[i+1] - carry;
       } else {
-        const s32 mask = input[i] >> 31;
-        const s32 carry = -((input[i] & mask) >> 26);
+        const int32_t mask = input[i] >> 31;
+        const int32_t carry = -((input[i] & mask) >> 26);
         input[i] = input[i] + (carry << 26);
         input[i+1] = input[i+1] - carry;
       }
@@ -492,8 +514,8 @@ fcontract(u8 *output, limb *input_limbs) {
     /* There's no greater limb for input[9] to borrow from, but we can multiply
      * by 19 and borrow from input[0], which is valid mod 2^255-19. */
     {
-      const s32 mask = input[9] >> 31;
-      const s32 carry = -((input[9] & mask) >> 25);
+      const int32_t mask = input[9] >> 31;
+      const int32_t carry = -((input[9] & mask) >> 25);
       input[9] = input[9] + (carry << 25);
       input[0] = input[0] - (carry * 19);
     }
@@ -516,8 +538,8 @@ fcontract(u8 *output, limb *input_limbs) {
      through input[9] were all zero.  In that case, input[1] is now 2^25 - 1,
      and this last borrow-propagation step will leave input[1] non-negative. */
   {
-    const s32 mask = input[0] >> 31;
-    const s32 carry = -((input[0] & mask) >> 26);
+    const int32_t mask = input[0] >> 31;
+    const int32_t carry = -((input[0] & mask) >> 26);
     input[0] = input[0] + (carry << 26);
     input[1] = input[1] - carry;
   }
@@ -527,18 +549,18 @@ fcontract(u8 *output, limb *input_limbs) {
   for (j = 0; j < 2; j++) {
     for (i = 0; i < 9; i++) {
       if ((i & 1) == 1) {
-        const s32 carry = input[i] >> 25;
+        const int32_t carry = input[i] >> 25;
         input[i] &= 0x1ffffff;
         input[i+1] += carry;
       } else {
-        const s32 carry = input[i] >> 26;
+        const int32_t carry = input[i] >> 26;
         input[i] &= 0x3ffffff;
         input[i+1] += carry;
       }
     }
 
     {
-      const s32 carry = input[9] >> 25;
+      const int32_t carry = input[9] >> 25;
       input[9] &= 0x1ffffff;
       input[0] += 19*carry;
     }
@@ -614,21 +636,23 @@ fcontract(u8 *output, limb *input_limbs) {
  *
  * On entry and exit, the absolute value of the limbs of all inputs and outputs
  * are < 2^26. */
-static void fmonty(limb *x2, limb *z2,  /* output 2Q */
-                   limb *x3, limb *z3,  /* output Q + Q' */
-                   limb *x, limb *z,    /* input Q */
-                   limb *xprime, limb *zprime,  /* input Q' */
-                   const limb *qmqp /* input Q - Q' */) {
-  limb origx[10], origxprime[10], zzz[19], xx[19], zz[19], xxprime[19],
+static void
+fmonty(int64_t *x2, int64_t *z2,  /* output 2Q */
+       int64_t *x3, int64_t *z3,  /* output Q + Q' */
+       int64_t *x, int64_t *z,    /* input Q */
+       int64_t *xprime, int64_t *zprime,  /* input Q' */
+       const int64_t *qmqp /* input Q - Q' */)
+{
+  int64_t origx[10], origxprime[10], zzz[19], xx[19], zz[19], xxprime[19],
         zzprime[19], zzzprime[19], xxxprime[19];
 
-  memcpy(origx, x, 10 * sizeof(limb));
+  memcpy(origx, x, 10 * sizeof(int64_t));
   fsum(x, z);
   /* |x[i]| < 2^27 */
   fdifference(z, origx);  /* does x - z */
   /* |z[i]| < 2^27 */
 
-  memcpy(origxprime, xprime, sizeof(limb) * 10);
+  memcpy(origxprime, xprime, sizeof(int64_t) * 10);
   fsum(xprime, zprime);
   /* |xprime[i]| < 2^27 */
   fdifference(zprime, origxprime);
@@ -645,7 +669,7 @@ static void fmonty(limb *x2, limb *z2,  /* output 2Q */
   freduce_degree(zzprime);
   freduce_coefficients(zzprime);
   /* |zzprime[i]| < 2^26 */
-  memcpy(origxprime, xxprime, sizeof(limb) * 10);
+  memcpy(origxprime, xxprime, sizeof(int64_t) * 10);
   fsum(xxprime, zzprime);
   /* |xxprime[i]| < 2^27 */
   fdifference(zzprime, origxprime);
@@ -659,8 +683,8 @@ static void fmonty(limb *x2, limb *z2,  /* output 2Q */
   freduce_degree(zzprime);
   freduce_coefficients(zzprime);
   /* |zzprime[i]| < 2^26 */
-  memcpy(x3, xxxprime, sizeof(limb) * 10);
-  memcpy(z3, zzprime, sizeof(limb) * 10);
+  memcpy(x3, xxxprime, sizeof(int64_t) * 10);
+  memcpy(z3, zzprime, sizeof(int64_t) * 10);
 
   fsquare(xx, x);
   /* |xx[i]| < 2^26 */
@@ -673,7 +697,7 @@ static void fmonty(limb *x2, limb *z2,  /* output 2Q */
   /* |x2[i]| < 2^26 */
   fdifference(zz, xx);  /* does zz = xx - zz */
   /* |zz[i]| < 2^27 */
-  memset(zzz + 10, 0, sizeof(limb) * 9);
+  memset(zzz + 10, 0, sizeof(int64_t) * 9);
   fscalar_product(zzz, zz, 121665);
   /* |zzz[i]| < 2^(27+17) */
   /* No need to call freduce_degree here:
@@ -699,14 +723,15 @@ static void fmonty(limb *x2, limb *z2,  /* output 2Q */
  * and all all values in a[0..9],b[0..9] must have magnitude less than
  * INT32_MAX. */
 static void
-swap_conditional(limb a[19], limb b[19], limb iswap) {
+swap_conditional(int64_t a[19], int64_t b[19], int64_t iswap)
+{
   unsigned i;
-  const s32 swap = (s32) -iswap;
+  const int32_t swap = (int32_t) -iswap;
 
   for (i = 0; i < 10; ++i) {
-    const s32 x = swap & ( ((s32)a[i]) ^ ((s32)b[i]) );
-    a[i] = ((s32)a[i]) ^ x;
-    b[i] = ((s32)b[i]) ^ x;
+    const int32_t x = swap & ( ((int32_t)a[i]) ^ ((int32_t)b[i]) );
+    a[i] = ((int32_t)a[i]) ^ x;
+    b[i] = ((int32_t)b[i]) ^ x;
   }
 }
 
@@ -716,20 +741,21 @@ swap_conditional(limb a[19], limb b[19], limb iswap) {
  *   n: a little endian, 32-byte number
  *   q: a point of the curve (short form) */
 static void
-cmult(limb *resultx, limb *resultz, const u8 *n, const limb *q) {
-  limb a[19] = {0}, b[19] = {1}, c[19] = {1}, d[19] = {0};
-  limb *nqpqx = a, *nqpqz = b, *nqx = c, *nqz = d, *t;
-  limb e[19] = {0}, f[19] = {1}, g[19] = {0}, h[19] = {1};
-  limb *nqpqx2 = e, *nqpqz2 = f, *nqx2 = g, *nqz2 = h;
+cmult(int64_t *resultx, int64_t *resultz, const uint8_t *n, const int64_t *q)
+{
+  int64_t a[19] = {0}, b[19] = {1}, c[19] = {1}, d[19] = {0};
+  int64_t *nqpqx = a, *nqpqz = b, *nqx = c, *nqz = d, *t;
+  int64_t e[19] = {0}, f[19] = {1}, g[19] = {0}, h[19] = {1};
+  int64_t *nqpqx2 = e, *nqpqz2 = f, *nqx2 = g, *nqz2 = h;
 
   unsigned i, j;
 
-  memcpy(nqpqx, q, sizeof(limb) * 10);
+  memcpy(nqpqx, q, sizeof(int64_t) * 10);
 
   for (i = 0; i < 32; ++i) {
-    u8 byte = n[31 - i];
+    uint8_t byte = n[31 - i];
     for (j = 0; j < 8; ++j) {
-      const limb bit = byte >> 7;
+      const int64_t bit = byte >> 7;
 
       swap_conditional(nqx, nqpqx, bit);
       swap_conditional(nqz, nqpqz, bit);
@@ -758,22 +784,23 @@ cmult(limb *resultx, limb *resultz, const u8 *n, const limb *q) {
     }
   }
 
-  memcpy(resultx, nqx, sizeof(limb) * 10);
-  memcpy(resultz, nqz, sizeof(limb) * 10);
+  memcpy(resultx, nqx, sizeof(int64_t) * 10);
+  memcpy(resultz, nqz, sizeof(int64_t) * 10);
 }
 
 static void
-crecip(limb *out, const limb *z) {
-  limb z2[10];
-  limb z9[10];
-  limb z11[10];
-  limb z2_5_0[10];
-  limb z2_10_0[10];
-  limb z2_20_0[10];
-  limb z2_50_0[10];
-  limb z2_100_0[10];
-  limb t0[10];
-  limb t1[10];
+crecip(int64_t *out, const int64_t *z)
+{
+  int64_t z2[10];
+  int64_t z9[10];
+  int64_t z11[10];
+  int64_t z2_5_0[10];
+  int64_t z2_10_0[10];
+  int64_t z2_20_0[10];
+  int64_t z2_50_0[10];
+  int64_t z2_100_0[10];
+  int64_t t0[10];
+  int64_t t1[10];
   int i;
 
   /* 2 */ fsquare(z2,z);
@@ -830,8 +857,12 @@ crecip(limb *out, const limb *z) {
 }
 
 int
-curve25519_donna(u8 *mypublic, const u8 *secret, const u8 *basepoint) {
-  limb bp[10], x[10], z[11], zmone[10];
+curve25519_donna(
+        uint8_t *mypublic,
+        const uint8_t *secret,
+        const uint8_t *basepoint)
+{
+  int64_t bp[10], x[10], z[11], zmone[10];
   uint8_t e[32];
   int i;
 

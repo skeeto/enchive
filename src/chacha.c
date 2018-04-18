@@ -6,15 +6,14 @@ Public domain.
 
 #include "chacha.h"
 
-#define U8V(v)  ((u8)(v)  & U8C(0xFF))
-#define U16V(v) ((u16)(v) & U16C(0xFFFF))
-#define U32V(v) ((u32)(v) & U32C(0xFFFFFFFF))
+#define U8V(v)  ((uint8_t)(v)  & UINT8_C(0xFF))
+#define U32V(v) ((uint32_t)(v) & UINT32_C(0xFFFFFFFF))
 
 #define U8TO32_LITTLE(p) \
-  (((u32)((p)[0])      ) | \
-   ((u32)((p)[1]) <<  8) | \
-   ((u32)((p)[2]) << 16) | \
-   ((u32)((p)[3]) << 24))
+  (((uint32_t)((p)[0])      ) | \
+   ((uint32_t)((p)[1]) <<  8) | \
+   ((uint32_t)((p)[2]) << 16) | \
+   ((uint32_t)((p)[3]) << 24))
 
 #define U32TO8_LITTLE(p, v) \
   do { \
@@ -35,9 +34,10 @@ Public domain.
   x[a] = PLUS(x[a],x[b]); x[d] = ROTATE(XOR(x[d],x[a]), 8); \
   x[c] = PLUS(x[c],x[d]); x[b] = ROTATE(XOR(x[b],x[c]), 7);
 
-static void salsa20_wordtobyte(u8 output[64],const u32 input[16])
+static void
+salsa20_wordtobyte(uint8_t output[64], const uint32_t input[16])
 {
-  u32 x[16];
+  uint32_t x[16];
   int i;
 
   for (i = 0;i < 16;++i) x[i] = input[i];
@@ -58,7 +58,8 @@ static void salsa20_wordtobyte(u8 output[64],const u32 input[16])
 static const char sigma[16] = "expand 32-byte k";
 static const char tau[16] = "expand 16-byte k";
 
-void chacha_keysetup(chacha_ctx *x,const u8 *k,u32 kbits)
+void
+chacha_keysetup(chacha_ctx *x, const uint8_t *k, uint32_t kbits)
 {
   const char *constants;
 
@@ -82,7 +83,8 @@ void chacha_keysetup(chacha_ctx *x,const u8 *k,u32 kbits)
   x->input[3] = U8TO32_LITTLE(constants + 12);
 }
 
-void chacha_ivsetup(chacha_ctx *x,const u8 *iv)
+void
+chacha_ivsetup(chacha_ctx *x, const uint8_t *iv)
 {
   x->input[12] = 0;
   x->input[13] = 0;
@@ -90,10 +92,11 @@ void chacha_ivsetup(chacha_ctx *x,const u8 *iv)
   x->input[15] = U8TO32_LITTLE(iv + 4);
 }
 
-void chacha_encrypt_bytes(chacha_ctx *x,const u8 *m,u8 *c,u32 bytes)
+void
+chacha_encrypt(chacha_ctx *x, const uint8_t *m, uint8_t *c, uint32_t bytes)
 {
-  u8 output[64];
-  u32 i;
+  uint8_t output[64];
+  uint32_t i;
 
   if (!bytes) return;
   for (;;) {

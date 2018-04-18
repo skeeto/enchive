@@ -65,17 +65,20 @@
 /* Integer definitions needed by crypto */
 
 #include <stdint.h>
-
-#define U8C(v)  (UINT8_C(v))
-#define U16C(v) (UINT16_C(v))
-#define U32C(v) (UINT32_C(v))
-
-typedef uint8_t u8;
-typedef uint16_t u16;
-typedef uint32_t u32;
-typedef uint64_t u64;
-
-typedef int32_t s32;
-typedef int64_t limb;
+/* If your compiler lacks a stdint.h, such as when compiling with a
+ * plain ANSI C compiler, you'll need to replace this include with the
+ * appropriate typedefs for the following types:
+ *
+ *   uint8_t
+ *   uint32_t
+ *   uint64_t
+ *   int32_t
+ *   int64_t
+ *
+ * You will also need to define these macros:
+ *
+ *   UINT8_C
+ *   UINT32_C
+ */
 
 #endif /* CONFIG_H */
