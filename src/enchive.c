@@ -62,9 +62,10 @@ cleanup_closed(FILE *file)
 {
     unsigned i;
     for (i = 0; i < sizeof(cleanup) / sizeof(*cleanup); i++) {
-        if (file == cleanup[i].file)
+        if (file == cleanup[i].file) {
             cleanup[i].file = 0;
-        return;
+            return;
+        }
     }
     abort();
 }
