@@ -16,8 +16,11 @@
 (defcustom enchive-program-name "enchive"
   "Path to the locally installed enchive binary.")
 
-(defvar enchive-handler-entry (cons "\\.enchive$" #'enchive-file-handler)
+(defvar enchive-handler-entry (cons "\\.enchive\\'" #'enchive-file-handler)
   "Entry for `enchive-mode' in `file-name-handler-alist'.")
+
+(defvar enchive-auto-mode-entry (list "\\.enchive\\'" nil 'enchive)
+  "Entry for `enchive-mode' in `auto-mode-alist'.")
 
 (defun enchive-file-handler (operation &rest args)
   "Handler for `file-name-handler-alist' for automatic encrypt/decrypt."
@@ -41,9 +44,13 @@
   :global t
   (setf file-name-handler-alist
         (delq enchive-handler-entry file-name-handler-alist))
-  (if enchive-mode
-      (setf file-name-handler-alist
-            (cons enchive-handler-entry file-name-handler-alist))))
+  (setf auto-mode-alist
+        (delq enchive-auto-mode-entry auto-mode-alist))
+  (when enchive-mode
+    (setf file-name-handler-alist
+          (cons enchive-handler-entry file-name-handler-alist))
+    (setf auto-mode-alist
+          (cons enchive-auto-mode-entry auto-mode-alist))))
 
 (provide 'enchive-mode)
 
