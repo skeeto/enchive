@@ -21,19 +21,24 @@
 
 (defun enchive-file-handler (operation &rest args)
   "Handler for `file-name-handler-alist' for automatic encrypt/decrypt."
-  (let ((file-name-handler-alist ()))
-    (cond ((eq operation 'insert-file-contents)
-           (let ((file (car args)))
-             (unless (= 0 (call-process enchive-program-name file '(t nil) nil
-                                        "--pinentry" "--agent" "extract"))
-               (error "Enchive subprocess failed"))
-             (setf buffer-file-name file)
-             (list file (buffer-size))))
-          ((eq operation 'write-region)
-           (call-process-region (nth 0 args) (nth 1 args)
-				enchive-program-name nil nil nil
-                                "archive" "/dev/stdin" (nth 2 args)))
-          ((apply operation args)))))
+  (cond ((eq operation 'insert-file-contents)
+         (let ((file (car args)))
+           (unless (= 0 (call-process enchive-program-name file '(t nil) nil
+                                      "--pinentry" "--agent" "extract"))
+             (error "Enchive subprocess failed"))
+           (setf buffer-file-name file)
+           (list file (buffer-size))))
+        ((eq operation 'write-region)
+         (call-process-region (nth 0 args) (nth 1 args)
+                              enchive-program-name nil nil nil
+                              "archive" "/dev/stdin" (nth 2 args)))
+        ;; Handle any operation we don’t know about.
+        (t (let ((inhibit-file-name-handlers
+                  (cons 'enchive-file-handler
+                        (and (eq inhibit-file-name-operation operation)
+                             inhibit-file-name-handlers)))
+                 (inhibit-file-name-operation operation))
+             (apply operation args)))))
 
 ;;;###autoload
 (define-minor-mode enchive-mode
