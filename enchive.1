@@ -90,6 +90,12 @@ Prints the public key fingerprint after generation or editing.
 Sets the difficulty exponent for deriving the protection key from the protection key passphrase.
 Default is 25.
 .TP
+\fB\-r\fR \fIN\fR, \fB\-\-repeats\fR \fIN\fR
+Number of repeated passphrase prompts when deriving a secret key.
+It is convenient to set this to zero when relying primarily on fingerprint verification.
+Alternatively, additional repeat prompts may aid in memorization.
+Default is 1.
+.TP
 \fB\-u\fR, \fB\-\-plain\fR
 Do not use a protection key, and instead store the secret key unencrypted on the disk.
 Consider using the key agent instead of this option.

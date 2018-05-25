@@ -1150,6 +1150,7 @@ command_keygen(struct optparse *options)
         {"fingerprint", 'i', OPTPARSE_NONE},
         {"iterations",  'k', OPTPARSE_REQUIRED},
         {"plain",       'u', OPTPARSE_NONE},
+        {"repeats",     'r', OPTPARSE_REQUIRED},
         {0, 0, 0}
     };
 
@@ -1164,6 +1165,7 @@ command_keygen(struct optparse *options)
     int edit = 0;
     int protect = 1;
     int fingerprint = 0;
+    int repeats = 1;
     int key_derive_iterations = ENCHIVE_KEY_DERIVE_ITERATIONS;
     int seckey_derive_iterations = ENCHIVE_SECKEY_DERIVE_ITERATIONS;
 
@@ -1208,6 +1210,16 @@ command_keygen(struct optparse *options)
                           arg);
                 key_derive_iterations = n;
             } break;
+            case 'r': {
+                char *p;
+                char *arg = options->optarg;
+                long n;
+                errno = 0;
+                n = strtol(arg, &p, 10);
+                if (errno || *p || n < 0 || n >= 256)
+                    fatal("invalid --repeats (-r) -- %s", arg);
+                repeats = n;
+            } break;
             case 'u':
                 protect = 0;
                 break;
@@ -1242,10 +1254,12 @@ command_keygen(struct optparse *options)
         char pass[2][ENCHIVE_PASSPHRASE_MAX];
         get_passphrase(pass[0], sizeof(pass[0]),
                        "secret key passphrase: ");
-        get_passphrase(pass[1], sizeof(pass[0]),
-                       "secret key passphrase (repeat): ");
-        if (strcmp(pass[0], pass[1]) != 0)
-            fatal("secret key passphrases don't match");
+        while (repeats--) {
+            get_passphrase(pass[1], sizeof(pass[0]),
+                           "secret key passphrase (repeat): ");
+            if (strcmp(pass[0], pass[1]) != 0)
+                fatal("secret key passphrases don't match");
+        }
         key_derive(pass[0], secret, seckey_derive_iterations, 0);
         secret[0] &= 248;
         secret[31] &= 127;
