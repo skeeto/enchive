@@ -1129,8 +1129,9 @@ parse_command(char *command)
 {
     int found = COMMAND_UNKNOWN;
     size_t len = strlen(command);
+    int ncommands = sizeof(command_names) / sizeof(*command_names);
     int i;
-    for (i = 0; i < 5; i++) {
+    for (i = 0; i < ncommands; i++) {
         if (strncmp(command, command_names[i], len) == 0) {
             if (found >= 0)
                 return COMMAND_AMBIGUOUS;
