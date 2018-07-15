@@ -24,7 +24,7 @@
 #endif
 
 #ifndef ENCHIVE_OPTION_AGENT
-#  if defined(__unix__) || defined(__APPLE__)
+#  if defined(__unix__) || defined(__APPLE__) || defined(__HAIKU__)
 #    define ENCHIVE_OPTION_AGENT 1
 #  else
 #    define ENCHIVE_OPTION_AGENT 0

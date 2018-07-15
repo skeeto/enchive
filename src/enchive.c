@@ -324,7 +324,7 @@ agent_run(const uint8_t *key, const uint8_t *id)
  */
 static char *storage_directory(char *file);
 
-#if defined(__unix__) || defined(__APPLE__)
+#if defined(__unix__) || defined(__APPLE__) || defined(__HAIKU__)
 #include <dirent.h>
 #include <unistd.h>
 #include <sys/stat.h>
@@ -434,7 +434,7 @@ get_passphrase_dumb(char *buf, size_t len, char *prompt)
         buf[passlen - 1] = 0;
 }
 
-#if defined(__unix__) || defined(__APPLE__)
+#if defined(__unix__) || defined(__APPLE__) || defined(__HAIKU__)
 #include <fcntl.h>
 #include <unistd.h>
 #include <termios.h>
@@ -607,7 +607,7 @@ get_passphrase(char *buf, size_t len, char *prompt)
  */
 static FILE *secure_creat(const char *file);
 
-#if defined(__unix__) || defined(__APPLE__)
+#if defined(__unix__) || defined(__APPLE__) || defined(__HAIKU__)
 #include <unistd.h>
 
 static FILE *
@@ -716,7 +716,7 @@ key_derive(const char *passphrase, uint8_t *buf, int iexp, const uint8_t *salt)
  */
 static void secure_entropy(void *buf, size_t len);
 
-#if defined(__unix__) || defined(__APPLE__)
+#if defined(__unix__) || defined(__APPLE__) || defined(__HAIKU__)
 static void
 secure_entropy(void *buf, size_t len)
 {
