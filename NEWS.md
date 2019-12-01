@@ -1,5 +1,13 @@
 # Changes
 
+## 3.5
+
+* New keygen option: --repeats (-r), times to repeat passphrase prompt
+* More explicit passphrase prompts
+* Improved portability
+* Fix various issues with enchive-mode.el
+* Minor documentation and bug fixes
+
 ## 3.4
 
 * New `--pinentry` (`-e`) global option. This is an alternative way to
