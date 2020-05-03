@@ -581,21 +581,96 @@ get_passphrase(char *buf, size_t len, char *prompt)
 static void
 get_passphrase(char *buf, size_t len, char *prompt)
 {
-    DWORD orig;
-    HANDLE in = GetStdHandle(STD_INPUT_HANDLE);
-    if (!GetConsoleMode(in, &orig)) {
-        get_passphrase_dumb(buf, len, prompt);
-    } else {
-        size_t passlen;
-        SetConsoleMode(in, orig & ~ENABLE_ECHO_INPUT);
-        fputs(prompt, stderr);
-        if (!fgets(buf, len, stdin))
-            fatal("could not read passphrase");
-        fputc('\n', stderr);
-        passlen = strlen(buf);
-        if (buf[passlen - 1] < ' ')
-            buf[passlen - 1] = 0;
+    int state = 0;
+    int result = 0;
+    WCHAR prev = 0;
+    DWORD orig, mode;
+    HANDLE hi, ho = INVALID_HANDLE_VALUE;
+    unsigned char *p = (unsigned char *)buf;
+
+    /* Set up input console handle */
+    hi = CreateFileA(
+        "CONIN$", GENERIC_READ|GENERIC_WRITE, 0, 0, OPEN_EXISTING, 0, 0
+    );
+    orig = 0;
+    if (!GetConsoleMode(hi, &orig)) goto done;
+    mode = orig | ENABLE_PROCESSED_INPUT;
+    mode &= ~ENABLE_LINE_INPUT;
+    mode &= ~ENABLE_ECHO_INPUT;
+    if (!SetConsoleMode(hi, mode)) goto done;
+
+    /* Set up output console handle */
+    ho = CreateFileA(
+        "CONOUT$", GENERIC_WRITE, 0, 0, OPEN_EXISTING, 0, 0
+    );
+    if (!WriteConsoleA(ho, prompt, strlen(prompt), 0, 0)) goto done;
+
+    /* Read a UTF-16 code point at a time. */
+    while (p - (unsigned char *)buf < (ptrdiff_t)len - 1) {
+        DWORD n;
+        WCHAR wc;
+        long c = 0;
+
+        if (!ReadConsoleW(hi, &wc, 1, &n, 0) || !n) goto done;
+        switch (state) {
+        case 0:
+            if (wc == '\r' || wc == '\n') {
+                result = 1;
+                ((char *)buf)[p - (unsigned char *)buf] = 0;
+                goto done;
+            } else if (wc >= 0xd800 && wc < 0xdc00) {
+                prev = wc;
+                state = 1;
+                continue;
+            } else if (wc >= 0xdc00 && wc <= 0xdfff) {
+                goto done; /* unpaired low surrogate */
+            } else if (!wc) {
+                goto done; /* binary input? */
+            } else {
+                c = wc;
+            }
+            break;
+        case 1:
+            if (wc < 0xdc00 || wc > 0xdfff) {
+                goto done; /* unpaired high surrogate */
+            }
+            c = 0x10000L | (prev - 0xd800)<<10 | (wc - 0xdc00);
+            state = 0;
+            break;
+        }
+
+        if (c >= 1L<<16) {
+            if (len - (p - (unsigned char *)buf) < 4) goto done;
+            p[0] = 0xf0 |  (c >> 18);
+            p[1] = 0x80 | ((c >> 12) & 0x3f);
+            p[2] = 0x80 | ((c >>  6) & 0x3f);
+            p[3] = 0x80 | ((c >>  0) & 0x3f);
+            p += 4;
+        } else if (c >= 1L<<11) {
+            if (len - (p - (unsigned char *)buf) < 3) goto done;
+            p[0] = 0xe0 |  (c >> 12);
+            p[1] = 0x80 | ((c >>  6) & 0x3f);
+            p[2] = 0x80 | ((c >>  0) & 0x3f);
+            p += 3;
+        } else if (c >= 1L<<7) {
+            if (len - (p - (unsigned char *)buf) < 2) goto done;
+            p[0] = 0xc0 |  (c >>  6);
+            p[1] = 0x80 | ((c >>  0) & 0x3f);
+            p += 2;
+        } else if (c) {
+            p[0] = c;
+            p += 1;
+        }
     }
+
+done:
+    /* Exploit that INVALID_HANDLE_VALUE is a no-op */
+    WriteConsoleA(ho, "\n", 1, 0, 0);
+    SetConsoleMode(hi, orig);
+    CloseHandle(ho);
+    CloseHandle(hi);
+    if (!result) fatal("failed to read passphrase from console");
+    (void)get_passphrase_dumb;
 }
 
 #else
