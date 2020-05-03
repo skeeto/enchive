@@ -105,11 +105,6 @@ A purposeful design choice is that encrypted/archived files have no
 distinguishing marks whatsoever (magic numbers, etc.), making them
 indistinguishable from random data.
 
-No effort is made to set stdin and stdout to binary mode. For Windows
-this means passing data through Enchive using stdin/stdout isn't
-useful. This is low priority because Microsoft's [UCRT file streams
-are broken anyway][pipe] when pipes are involved.
-
 ### Frequently asked questions
 
 > This tool will never achieve critical mass, so what's the point?
@@ -291,6 +286,5 @@ Maximum passphrase size in bytes, including null terminator.
 [getrandom]: https://manpages.debian.org/testing/manpages-dev/getrandom.2.en.html
 [getentropy]: http://man.openbsd.org/OpenBSD-current/man2/getentropy.2
 [csp]: https://msdn.microsoft.com/en-us/library/windows/desktop/aa380246(v=vs.85).aspx
-[pipe]: https://radiance-online.org/pipermail/radiance-dev/2016-March/001576.html
 [bw]: https://en.bitcoin.it/wiki/Brainwallet
 [dw]: http://world.std.com/~reinhold/diceware.html

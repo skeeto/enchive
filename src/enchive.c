@@ -1593,6 +1593,14 @@ main(int argc, char **argv)
         exit(EXIT_FAILURE);
     }
 
+#ifdef _WIN32
+    { /* Set stdin/stdout to binary mode. */
+        int _setmode(int, int);
+        _setmode(0, 0x8000);
+        _setmode(1, 0x8000);
+    }
+#endif
+
     switch (parse_command(command)) {
         case COMMAND_UNKNOWN:
         case COMMAND_AMBIGUOUS:
