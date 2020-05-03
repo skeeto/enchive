@@ -10,6 +10,10 @@
 #include "chacha.h"
 #include "optparse.h"
 
+#ifdef _MSC_VER
+#  pragma comment(lib, "advapi32.lib")
+#endif
+
 int curve25519_donna(uint8_t *p, const uint8_t *s, const uint8_t *b);
 
 /* Global options. */
