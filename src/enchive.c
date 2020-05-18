@@ -495,6 +495,9 @@ pinentry(FILE *pfi, FILE *pfo, char *buf, size_t len, char *prompt)
         pinentry_decode(buf, len, line + 2);
     else
         fatal("pinentry protocol failure");
+
+    if (fprintf(pfi, "BYE\n") < 0 || fflush(pfi) < 0)
+        fatal("pinentry write() -- %s", strerror(errno));
 }
 
 #if defined(__unix__) || defined(__APPLE__) || defined(__HAIKU__)
