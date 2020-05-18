@@ -1,7 +1,7 @@
 .POSIX:
 .SUFFIXES:
 CC     = cc
-CFLAGS = -ansi -pedantic -Wall -Wextra -O3 -g3
+CFLAGS = -ansi -pedantic -Wall -Wextra -Wno-missing-field-initializers -O3 -g
 PREFIX = /usr/local
 
 sources = src/enchive.c src/chacha.c src/curve25519-donna.c src/sha256.c
