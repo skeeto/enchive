@@ -438,11 +438,6 @@ get_passphrase_dumb(char *buf, size_t len, char *prompt)
         buf[passlen - 1] = 0;
 }
 
-#if defined(__unix__) || defined(__APPLE__) || defined(__HAIKU__)
-#include <fcntl.h>
-#include <unistd.h>
-#include <termios.h>
-
 static void
 pinentry_decode(char *buf, size_t blen, const char *str)
 {
@@ -469,7 +464,46 @@ pinentry_decode(char *buf, size_t blen, const char *str)
 }
 
 static void
-invoke_pinentry(char *buf, size_t len, char *prompt)
+pinentry(FILE *pfi, FILE *pfo, char *buf, size_t len, char *prompt)
+{
+    char line[ENCHIVE_PASSPHRASE_MAX * 3 + 32];
+
+    if (!fgets(line, sizeof(line), pfo))
+        /* Likely caused by exec() failure, so exit quietly. */
+        exit(EXIT_FAILURE);
+    if (strncmp(line, "OK", 2) != 0)
+        fatal("pinentry startup failure");
+
+    if (fprintf(pfi, "SETPROMPT %s\n", prompt) < 0 || fflush(pfi) < 0)
+        fatal("pinentry write() -- %s", strerror(errno));
+
+    if (!fgets(line, sizeof(line), pfo))
+        fatal("pinentry read() -- %s", strerror(errno));
+    if (strncmp(line, "OK", 2) != 0)
+        fatal("pinentry protocol failure");
+
+    if (fprintf(pfi, "GETPIN\n") < 0 || fflush(pfi) < 0)
+        fatal("pinentry write() -- %s", strerror(errno));
+
+    if (!fgets(line, sizeof(line), pfo))
+        fatal("pinentry read() -- %s", strerror(errno));
+    if (strncmp(line, "ERR ", 4) == 0)
+        fatal("passphrase entry canceled");
+    else if (strncmp(line, "OK", 2) == 0)
+        buf[0] = 0;
+    else if (strncmp(line, "D ", 2) == 0)
+        pinentry_decode(buf, len, line + 2);
+    else
+        fatal("pinentry protocol failure");
+}
+
+#if defined(__unix__) || defined(__APPLE__) || defined(__HAIKU__)
+#include <fcntl.h>
+#include <unistd.h>
+#include <termios.h>
+
+static void
+pinentry_unix(char *buf, size_t len, char *prompt)
 {
     int pin[2];
     int pout[2];
@@ -485,7 +519,6 @@ invoke_pinentry(char *buf, size_t len, char *prompt)
         fatal("pinentry fork() failed -- %s", strerror(errno));
     if (pid) {
         FILE *pfi, *pfo;
-        char line[ENCHIVE_PASSPHRASE_MAX * 3 + 32];
 
         close(pin[0]);
         close(pout[1]);
@@ -495,33 +528,7 @@ invoke_pinentry(char *buf, size_t len, char *prompt)
         if (!(pfo = fdopen(pout[0], "r")))
             fatal("fdopen() output -- %s", strerror(errno));
 
-        if (!fgets(line, sizeof(line), pfo))
-            /* Likely caused by exec() failure, so exit quietly. */
-            exit(EXIT_FAILURE);
-        if (strncmp(line, "OK", 2) != 0)
-            fatal("pinentry startup failure");
-
-        if (fprintf(pfi, "SETPROMPT %s\n", prompt) < 0 || fflush(pfi) < 0)
-            fatal("pinentry write() -- %s", strerror(errno));
-
-        if (!fgets(line, sizeof(line), pfo))
-            fatal("pinentry read() -- %s", strerror(errno));
-        if (strncmp(line, "OK", 2) != 0)
-            fatal("pinentry protocol failure");
-
-        if (fprintf(pfi, "GETPIN\n") < 0 || fflush(pfi) < 0)
-            fatal("pinentry write() -- %s", strerror(errno));
-
-        if (!fgets(line, sizeof(line), pfo))
-            fatal("pinentry read() -- %s", strerror(errno));
-        if (strncmp(line, "ERR ", 4) == 0)
-            fatal("passphrase entry canceled");
-        else if (strncmp(line, "OK", 2) == 0)
-            buf[0] = 0;
-        else if (strncmp(line, "D ", 2) == 0)
-            pinentry_decode(buf, len, line + 2);
-        else
-            fatal("pinentry protocol failure");
+        pinentry(pfi, pfo, buf, len, prompt);
 
         fclose(pfo);
         fclose(pfi);
@@ -542,7 +549,7 @@ get_passphrase(char *buf, size_t len, char *prompt)
     int tty;
 
     if (pinentry_path) {
-        invoke_pinentry(buf, len, prompt);
+        pinentry_unix(buf, len, prompt);
         return;
     }
 
@@ -577,6 +584,50 @@ get_passphrase(char *buf, size_t len, char *prompt)
 
 #elif defined(_WIN32)
 #include <windows.h>
+#include <fcntl.h>
+
+static void
+pinentry_win32(char *buf, size_t len, char *prompt)
+{
+    BOOL r;
+    int fdi, fdo;
+    FILE *pfi, *pfo;
+    HANDLE pi[2], po[2];
+    PROCESS_INFORMATION proc;
+    STARTUPINFOA info = {sizeof(info)};
+    SECURITY_ATTRIBUTES attr = {sizeof(attr), 0, TRUE};
+
+    r = CreatePipe(&pi[0], &pi[1], &attr, 0);
+    if (!r) fatal("could not start pinentry");
+    r = CreatePipe(&po[0], &po[1], &attr, 0);
+    if (!r) fatal("could not start pinentry");
+
+    info.hStdInput = pi[0];
+    info.hStdOutput = po[1];
+    info.hStdError = GetStdHandle(STD_ERROR_HANDLE);
+    info.dwFlags = STARTF_USESTDHANDLES;
+
+    r = CreateProcessA(0, pinentry_path, 0, 0, TRUE, 0, 0, 0, &info, &proc);
+    if (!r) fatal("could not start pinentry: %s", pinentry_path);
+    CloseHandle(po[1]);
+    CloseHandle(pi[0]);
+
+    fdi = _open_osfhandle((intptr_t)pi[1], _O_APPEND);
+    if (fdi == -1) fatal("could not start pinentry");
+    pfi = fdopen(fdi, "wb");
+    if (!pfi) fatal("could not start pinentry");
+
+    fdo = _open_osfhandle((intptr_t)po[0], _O_RDONLY);
+    if (fdo == -1) fatal("could not start pinentry");
+    pfo = fdopen(fdo, "rb");
+    if (!pfo) fatal("could not start pinentry");
+    setvbuf(pfo, 0, _IONBF, 0);
+
+    pinentry(pfi, pfo, buf, len, prompt);
+
+    fclose(pfo);
+    fclose(pfi);
+}
 
 static void
 get_passphrase(char *buf, size_t len, char *prompt)
@@ -587,6 +638,11 @@ get_passphrase(char *buf, size_t len, char *prompt)
     DWORD orig, mode;
     HANDLE hi, ho = INVALID_HANDLE_VALUE;
     unsigned char *p = (unsigned char *)buf;
+
+    if (pinentry_path) {
+        pinentry_win32(buf, len, prompt);
+        return;
+    }
 
     /* Set up input console handle */
     hi = CreateFileA(
@@ -1669,11 +1725,9 @@ main(int argc, char **argv)
     }
 
 #ifdef _WIN32
-    { /* Set stdin/stdout to binary mode. */
-        int _setmode(int, int);
-        _setmode(0, 0x8000);
-        _setmode(1, 0x8000);
-    }
+    /* Set stdin/stdout to binary mode. */
+    _setmode(0, 0x8000);
+    _setmode(1, 0x8000);
 #endif
 
     switch (parse_command(command)) {
