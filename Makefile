@@ -5,7 +5,6 @@ CFLAGS  = -ansi -pedantic -Wall -Wextra -Wno-missing-field-initializers -O3 -g
 LDFLAGS =
 LDLIBS  =
 PREFIX  = /usr/local
-EXE     =
 
 sources = src/enchive.c src/chacha.c src/curve25519-donna.c src/sha256.c
 objects = $(sources:.c=.o)
