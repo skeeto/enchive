@@ -369,15 +369,9 @@ storage_directory(char *file)
     s = strchr(path + 1, '/');
     while (s) {
         *s = 0;
-        if (dir_exists(path) || !mkdir(path, 0700)) {
-            DIR *dir = opendir(path);
-            if (dir)
-                closedir(dir);
-            else
-                fatal("opendir(%s) -- %s", path, strerror(errno));
-        } else {
-            fatal("mkdir(%s) -- %s", path, strerror(errno));
-        }
+        if (!dir_exists(path))
+	    if (mkdir(path, 0700))
+                fatal("mkdir(%s) -- %s", path, strerror(errno));
         *s = '/';
         s = strchr(s + 1, '/');
     }
