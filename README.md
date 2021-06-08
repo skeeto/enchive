@@ -49,7 +49,7 @@ To archive a file for storage:
 This will encrypt `sensitive.zip` as `sensitive.zip.enchive` (leaving
 the original in place). You can safely archive this wherever.
 
-To extract the file on a machine with `encrypt.sec`, use `extract`. It
+To extract the file on a machine with `enchive.sec`, use `extract`. It
 will prompt for the passphrase you entered during key generation.
 
     $ enchive extract sensitive.zip.enchive
