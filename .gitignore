@@ -3,3 +3,6 @@ enchive
 *.enchive
 enchive-cli.c
 *.elc
+*.swp
+*.com
+*.com.dbg
