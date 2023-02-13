@@ -21,7 +21,7 @@ enchive.com.dbg: enchive-cli.c
 	@gcc $(COSMO_CFLAGS) $(CFLAGS) -o $@ $< $(COSMO_LDFLAGS) $(LDFLAGS)
 
 enchive-cli.c: $(headers) $(sources)
-	cat $(headers) $(sources) | sed 's/^#include.*//g;s/^fsum(int64_t /enchive_fsum(int64_t /' > $@
+	cat $(headers) $(sources) | sed 's/^#include.*//g;s/fsum/enchive_fsum/' > $@
 
 clean:
 	@rm -f *.dbg *.com enchive-cli.c
