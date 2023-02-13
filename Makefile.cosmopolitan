@@ -1,0 +1,28 @@
+.PHONY: all clean
+.SUFFIXES:
+
+CFLAGS = -w
+COSMO = ../cosmopolitan
+COSMO_CFLAGS = -g -Os -static -nostdlib -nostdinc -fno-pie -no-pie -mno-red-zone \
+	-fno-omit-frame-pointer -pg -mnop-mcount -mno-tls-direct-seg-refs -gdwarf-4 \
+	-include $(COSMO)/cosmopolitan.h
+COSMO_LDFLAGS = -fuse-ld=bfd -Wl,-T,$(COSMO)/ape.lds -Wl,--gc-sections \
+	$(COSMO)/crt.o $(COSMO)/ape-no-modify-self.o $(COSMO)/cosmopolitan.a
+
+sources = src/enchive.c src/chacha.c src/curve25519-donna.c src/sha256.c
+headers = config.h src/docs.h src/chacha.h src/sha256.h src/optparse.h
+
+all: enchive.com
+
+enchive.com: enchive.com.dbg
+	@objcopy -S -O binary $< $@
+
+enchive.com.dbg: enchive-cli.c
+	@gcc $(COSMO_CFLAGS) $(CFLAGS) -o $@ $< $(COSMO_LDFLAGS) $(LDFLAGS)
+
+enchive-cli.c: $(headers) $(sources)
+	cat $(headers) $(sources) | sed 's/^#include.*//g;s/^fsum(int64_t /enchive_fsum(int64_t /' > $@
+
+clean:
+	@rm -f *.dbg *.com enchive-cli.c
+
